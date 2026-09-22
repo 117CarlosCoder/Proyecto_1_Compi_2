@@ -3,13 +3,13 @@ package org.compi2.analisis_semantico;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 public class TablaSimbolos {
     private final Stack<Ambito> pilaAmbitos = new Stack<>();
     private final List<Simbolo> registroHistorico = new ArrayList<>();
+    private final Map<String, Tipo> catalogoTiposCompuestos = new HashMap<>();
+    private final Map<String, Simbolo> catalogoFuncionesGlobales = new HashMap<>();
     private int contadorId = 1;
 
     public TablaSimbolos() {
@@ -19,18 +19,56 @@ public class TablaSimbolos {
     public void reiniciar() {
         pilaAmbitos.clear();
         registroHistorico.clear();
+        catalogoTiposCompuestos.clear();
+        catalogoFuncionesGlobales.clear();
         contadorId = 1;
         pilaAmbitos.push(new Ambito(null, "Global", true));
+    }
+
+    public boolean registrarTipoCompuesto(Tipo tipo) {
+        if (catalogoTiposCompuestos.containsKey(tipo.getNombreTipo())) {
+            return false;
+        }
+        catalogoTiposCompuestos.put(tipo.getNombreTipo(), tipo);
+        return true;
+    }
+
+    public Tipo buscarTipoCompuesto(String nombre) {
+        return catalogoTiposCompuestos.get(nombre);
+    }
+
+    public boolean existeTipoCompuesto(String nombre) {
+        return catalogoTiposCompuestos.containsKey(nombre);
+    }
+
+    public Simbolo registrarFuncionGlobal(String nombre, Tipo tipoFuncion, int linea, int columna) {
+        if (catalogoFuncionesGlobales.containsKey(nombre)) {
+            return null;
+        }
+
+        Ambito ambitoGlobal = pilaAmbitos.firstElement();
+        if (ambitoGlobal.existeEnAmbitoActual(nombre)) {
+            return null;
+        }
+
+        Simbolo f = new Simbolo(contadorId++, nombre, tipoFuncion, "funcion", "Global", linea, columna, 0);
+        catalogoFuncionesGlobales.put(nombre, f);
+        ambitoGlobal.insertar(f);
+        registroHistorico.add(f);
+        return f;
+    }
+
+    public Simbolo buscarFuncionGlobal(String nombre) {
+        return catalogoFuncionesGlobales.get(nombre);
     }
 
     public void abrirAmbito(String nombre) {
         abrirAmbito(nombre, false);
     }
 
-    public void abrirAmbito(String nombre, boolean esNuevaFuncion) {
+    public void abrirAmbito(String nombre, boolean esNuevoMarcoFuncion) {
         Ambito actual = pilaAmbitos.peek();
-        Ambito nuevo = new Ambito(actual, nombre, esNuevaFuncion);
-        pilaAmbitos.push(nuevo);
+        pilaAmbitos.push(new Ambito(actual, nombre, esNuevoMarcoFuncion));
     }
 
     public void cerrarAmbito() {
@@ -74,28 +112,20 @@ public class TablaSimbolos {
     }
 
     public List<Simbolo> obtenerTodosLosSimbolos() {
-        return new ArrayList<>(registroHistorico);
+        return Collections.unmodifiableList(new ArrayList<>(registroHistorico));
     }
 
     public String generarReporteTexto() {
-        if (registroHistorico.isEmpty()) {
-            return "Tabla de símbolos vacía.";
-        }
+        if (registroHistorico.isEmpty()) return "Tabla de símbolos vacía.";
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("=== TABLA DE SÍMBOLOS (%d registrados) ===\n", registroHistorico.size()));
-        sb.append(String.format("%-4s | %-16s | %-12s | %-16s | %-16s | %-6s | %-6s | %-6s\n",
+        sb.append(String.format("%-4s | %-16s | %-14s | %-14s | %-16s | %-6s | %-6s | %-6s\n",
             "ID", "Identificador", "Tipo", "Categoría", "Ámbito", "Línea", "Col.", "Offset"));
-        sb.append("--------------------------------------------------------------------------------------------\n");
+        sb.append("----------------------------------------------------------------------------------------------------\n");
         for (Simbolo s : registroHistorico) {
-            sb.append(String.format("%-4d | %-16s | %-12s | %-16s | %-16s | %-6d | %-6d | %-6d\n",
-                s.getId(),
-                s.getNombre(),
-                s.getTipo().getNombreTipo(),
-                s.getCategoria(),
-                s.getAmbito(),
-                s.getLinea(),
-                s.getColumna(),
-                s.getDesplazamiento()));
+            sb.append(String.format("%-4d | %-16s | %-14s | %-14s | %-16s | %-6d | %-6d | %-6d\n",
+                s.getId(), s.getNombre(), s.getTipo().getNombreTipo(), s.getCategoria(),
+                s.getAmbito(), s.getLinea(), s.getColumna(), s.getDesplazamiento()));
         }
         return sb.toString();
     }
