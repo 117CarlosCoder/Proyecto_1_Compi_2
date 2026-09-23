@@ -6,41 +6,65 @@ import org.compi2.tipos.TipoBase;
 public class ComprobadorTipos {
 
     public static boolean esCompatibleAsignacion(Tipo destino, Tipo origen) {
+        if (destino == null || origen == null) return false;
         if (destino.getBase() == TipoBase.ERROR || origen.getBase() == TipoBase.ERROR) return false;
-        if (destino.getBase() == TipoBase.VOID || origen.getBase() == TipoBase.VOID) return false;
+
+        if (origen.getBase() == TipoBase.VOID) {
+            return destino.getBase() == TipoBase.OBJETO_CLASE ||
+                destino.getBase() == TipoBase.ESTRUCTURA ||
+                destino.getBase() == TipoBase.ARREGLO;
+        }
+
+        if (destino.getBase() == TipoBase.VOID) return false;
 
         if (destino.esMismoTipo(origen)) return true;
 
         if (destino.getBase().esNumerico() && origen.getBase().esNumerico()) {
             return destino.getBase().getJerarquia() >= origen.getBase().getJerarquia();
         }
+
         return false;
     }
 
     public static Tipo resolverSuma(Tipo t1, Tipo t2) {
+        if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.ERROR || t2.getBase() == TipoBase.ERROR) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.VOID || t2.getBase() == TipoBase.VOID) return Tipo.ERROR;
-        if (t1.getBase() == TipoBase.CADENA || t2.getBase() == TipoBase.CADENA) return Tipo.CADENA;
+
+        if (t1.getBase() == TipoBase.CADENA || t2.getBase() == TipoBase.CADENA) {
+            return Tipo.CADENA;
+        }
 
         if (t1.getBase().esNumerico() && t2.getBase().esNumerico()) {
+            if (t1.getBase() == TipoBase.CARACTER && t2.getBase() == TipoBase.CARACTER) {
+                return Tipo.ENTERO;
+            }
             return (t1.getBase().getJerarquia() >= t2.getBase().getJerarquia()) ? t1 : t2;
         }
+
         return Tipo.ERROR;
     }
 
     public static Tipo resolverAritmetica(Tipo t1, Tipo t2) {
+        if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.ERROR || t2.getBase() == TipoBase.ERROR) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.VOID || t2.getBase() == TipoBase.VOID) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.CADENA || t2.getBase() == TipoBase.CADENA) return Tipo.ERROR;
 
         if (t1.getBase().esNumerico() && t2.getBase().esNumerico()) {
+            if (t1.getBase() == TipoBase.CARACTER && t2.getBase() == TipoBase.CARACTER) {
+                return Tipo.ENTERO;
+            }
             return (t1.getBase().getJerarquia() >= t2.getBase().getJerarquia()) ? t1 : t2;
         }
+
         return Tipo.ERROR;
     }
 
     public static Tipo resolverRelacional(Tipo t1, Tipo t2) {
+        if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.ERROR || t2.getBase() == TipoBase.ERROR) return Tipo.ERROR;
+
         if (t1.getBase().esNumerico() && t2.getBase().esNumerico()) {
             return Tipo.BOOLEANO;
         }
@@ -48,13 +72,24 @@ public class ComprobadorTipos {
     }
 
     public static Tipo resolverIgualdad(Tipo t1, Tipo t2) {
+        if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.ERROR || t2.getBase() == TipoBase.ERROR) return Tipo.ERROR;
+
+        if (t1.getBase() == TipoBase.VOID) {
+            return esTipoReferencia(t2) ? Tipo.BOOLEANO : Tipo.ERROR;
+        }
+        if (t2.getBase() == TipoBase.VOID) {
+            return esTipoReferencia(t1) ? Tipo.BOOLEANO : Tipo.ERROR;
+        }
+
         if (t1.esMismoTipo(t2)) return Tipo.BOOLEANO;
         if (t1.getBase().esNumerico() && t2.getBase().esNumerico()) return Tipo.BOOLEANO;
+
         return Tipo.ERROR;
     }
 
     public static Tipo resolverLogico(Tipo t1, Tipo t2) {
+        if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.BOOLEANO && t2.getBase() == TipoBase.BOOLEANO) {
             return Tipo.BOOLEANO;
         }
@@ -72,5 +107,11 @@ public class ComprobadorTipos {
             case "void" -> Tipo.VOID;
             default -> new Tipo(TipoBase.OBJETO_CLASE, lexema.trim());
         };
+    }
+
+    private static boolean esTipoReferencia(Tipo t) {
+        return t.getBase() == TipoBase.OBJETO_CLASE ||
+            t.getBase() == TipoBase.ESTRUCTURA ||
+            t.getBase() == TipoBase.ARREGLO;
     }
 }
