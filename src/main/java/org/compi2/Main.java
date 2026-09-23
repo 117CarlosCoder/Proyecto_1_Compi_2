@@ -18,6 +18,8 @@ import org.compi2.analisis_semantico.YSangriaToken;
 import org.compi2.tipos.Tipo;
 
 import org.compi2.ast.NodoAST;
+import org.compi2.ast.expresiones.*;
+import org.compi2.ast.sentencias.*;
 import org.compi2.constructores_ast.ConstructorAstPigLatin;
 import org.compi2.constructores_ast.ConstructorAstZetariano;
 import org.compi2.constructores_ast.ConstructorAstY;
@@ -37,6 +39,7 @@ public class Main {
         probarAstExpresionesY();
         probarSintaxisProgramasCompletos();
         probarCustomErrorListener();
+        probarNuevasSentenciasYExpresiones();
     }
 
     public static void probarMotorSemanticoAislado() {
@@ -269,6 +272,69 @@ public class Main {
 
         System.out.printf("\nTotal de errores capturados para UI: %d\n", erroresCapturados.size());
         for (ErrorCompilacion err : erroresCapturados) {
+            System.out.println("  -> " + err);
+        }
+    }
+
+    public static void probarNuevasSentenciasYExpresiones() {
+        System.out.println("\n=================================================");
+        System.out.println(">>> 7. VALIDACIÓN DE NUEVAS SENTENCIAS Y EXPRESIONES (Fase 2)");
+        System.out.println("=================================================");
+
+        TablaSimbolos ts = new TablaSimbolos();
+        List<ErrorSemantico> errores = new ArrayList<>();
+
+        NodoExpresionTernaria ternaria = new NodoExpresionTernaria(
+                new NodoOperacionBinaria(new NodoLiteral(10, 1, 1), ">", new NodoLiteral(5, 1, 1), 1, 1),
+                new NodoLiteral(100, 1, 1),
+                new NodoLiteral(200, 1, 1),
+                1, 1);
+        Tipo tipoTernaria = ternaria.comprobar(ts, errores);
+        System.out.println("[Ternario] '(10 > 5) ? 100 : 200' -> Tipo: " + tipoTernaria);
+
+        NodoBreak breakIlegal = new NodoBreak(10, 5);
+        breakIlegal.comprobar(ts, errores);
+
+        NodoFor cicloFor = new NodoFor(
+                new NodoDeclaracion("i", Tipo.ENTERO, new NodoLiteral(0, 1, 1), 12, 1),
+                new NodoOperacionBinaria(new NodoIdentificador("i", 12, 1), "<", new NodoLiteral(10, 12, 1), 12, 1),
+                new NodoOperacionUnaria("++", new NodoIdentificador("i", 12, 1), 12, 1),
+                List.of(
+                        new NodoImprimir(List.of(new NodoIdentificador("i", 13, 5)), true, 13, 5),
+                        new NodoBreak(14, 9) // Válido dentro de for
+                ),
+                12, 1);
+        cicloFor.comprobar(ts, errores);
+        System.out.println("[For & Break] Comprobación de ciclo 'for' con 'break' interno procesada.");
+
+        NodoSwitch switchPrueba = new NodoSwitch(
+                new NodoLiteral(1, 20, 1), // Tipo entero
+                List.of(
+                        new NodoSwitch.CasoSwitch(new NodoLiteral(1, 21, 5), List.of(new NodoBreak(21, 15)), 21, 5),
+                        new NodoSwitch.CasoSwitch(new NodoLiteral("textoInvalido", 22, 5),
+                                List.of(new NodoBreak(22, 15)), 22, 5) // Error: String en switch entero
+                ),
+                null,
+                20, 1);
+        switchPrueba.comprobar(ts, errores);
+
+        ts.abrirAmbitoFuncion("calcular()", Tipo.ENTERO);
+        NodoRetorno retCorrecto = new NodoRetorno(new NodoLiteral(42, 30, 5), 30, 5);
+        retCorrecto.comprobar(ts, errores);
+        NodoRetorno retIncompatible = new NodoRetorno(new NodoLiteral("noEsNumero", 31, 5), 31, 5); // Error: retorno
+                                                                                                    // incompatible
+        retIncompatible.comprobar(ts, errores);
+        ts.cerrarAmbito();
+
+        NodoInstanciacionArreglo nuevoArr = new NodoInstanciacionArreglo(
+                Tipo.ENTERO,
+                List.of(new NodoLiteral(5, 40, 1)),
+                40, 1);
+        Tipo tipoArr = nuevoArr.comprobar(ts, errores);
+        System.out.println("[Arreglo Nuevo] 'new int[5]' -> Tipo: " + tipoArr);
+
+        System.out.printf("\nTotal de errores semánticos detectados en pruebas: %d\n", errores.size());
+        for (ErrorSemantico err : errores) {
             System.out.println("  -> " + err);
         }
     }
