@@ -22,6 +22,9 @@ import org.compi2.constructores_ast.ConstructorAstPigLatin;
 import org.compi2.constructores_ast.ConstructorAstZetariano;
 import org.compi2.constructores_ast.ConstructorAstY;
 
+import org.compi2.errores.CustomErrorListener;
+import org.compi2.errores.ErrorCompilacion;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +36,7 @@ public class Main {
         probarAstExpresionesZetariano();
         probarAstExpresionesY();
         probarSintaxisProgramasCompletos();
+        probarCustomErrorListener();
     }
 
     public static void probarMotorSemanticoAislado() {
@@ -53,11 +57,14 @@ public class Main {
         ts.abrirAmbito("Bloque_Si", false);
         ts.registrarSimbolo("local_flag", Tipo.BOOLEANO, "variable", 8, 9);
 
-        System.out.println("[Búsqueda] 'local_flag' en ámbito local: " + (ts.buscarSimbolo("local_flag") != null ? "ENCONTRADO" : "FALLÓ"));
-        System.out.println("[Búsqueda] 'global_pi' desde ámbito anidado: " + (ts.buscarSimbolo("global_pi") != null ? "ENCONTRADO" : "FALLÓ"));
+        System.out.println("[Búsqueda] 'local_flag' en ámbito local: "
+                + (ts.buscarSimbolo("local_flag") != null ? "ENCONTRADO" : "FALLÓ"));
+        System.out.println("[Búsqueda] 'global_pi' desde ámbito anidado: "
+                + (ts.buscarSimbolo("global_pi") != null ? "ENCONTRADO" : "FALLÓ"));
 
         ts.cerrarAmbito();
-        System.out.println("[Búsqueda post-cierre] 'local_flag' fuera de bloque: " + (ts.buscarSimbolo("local_flag") == null ? "NO VISIBLE (CORRECTO)" : "ERROR DE ALCANCE"));
+        System.out.println("[Búsqueda post-cierre] 'local_flag' fuera de bloque: "
+                + (ts.buscarSimbolo("local_flag") == null ? "NO VISIBLE (CORRECTO)" : "ERROR DE ALCANCE"));
         ts.cerrarAmbito();
 
         Tipo sumaNumDec = ComprobadorTipos.resolverSuma(Tipo.ENTERO, Tipo.DECIMAL);
@@ -124,50 +131,50 @@ public class Main {
         System.out.println("=================================================");
 
         String codigoPigLatin = """
-            import carpeta.Guerrero.z;
-            import carpeta.Funciones.y;
+                import carpeta.Guerrero.z;
+                import carpeta.Funciones.y;
 
-            VARIABILES>
-            esto edad : numerus 20;
+                VARIABILES>
+                esto edad : numerus 20;
 
-            MAIOR>
-            >> "Hola comandante!";
-            FINIS;
-            """;
+                MAIOR>
+                >> "Hola comandante!";
+                FINIS;
+                """;
         piglatinLexer lexerPig = new piglatinLexer(CharStreams.fromString(codigoPigLatin));
         piglatinParser parserPig = new piglatinParser(new CommonTokenStream(lexerPig));
         parserPig.programa();
         reportarSintaxis("Pig Latin", parserPig.getNumberOfSyntaxErrors());
 
         String codigoZetariano = """
-            public class Guerrero {
-                public String nombre;
-                public int nivel;
+                public class Guerrero {
+                    public String nombre;
+                    public int nivel;
 
-                public Guerrero(String nombre, int nivel) {
-                    this.nombre = nombre;
-                    this.nivel = nivel;
-                }
+                    public Guerrero(String nombre, int nivel) {
+                        this.nombre = nombre;
+                        this.nivel = nivel;
+                    }
 
-                public int obtenerNivel() {
-                    return this.nivel;
+                    public int obtenerNivel() {
+                        return this.nivel;
+                    }
                 }
-            }
-            """;
+                """;
         zetarianoLexer lexerZ = new zetarianoLexer(CharStreams.fromString(codigoZetariano));
         zetarianoParser parserZ = new zetarianoParser(new CommonTokenStream(lexerZ));
         parserZ.unidadCompilacion();
         reportarSintaxis("Zetariano", parserZ.getNumberOfSyntaxErrors());
 
         String codigoY = """
-    %estructuras
-    estructura Punto:
-        entero x
-        entero y
-    %funciones
-    calcularPoder(entero base) -> entero:
-        retornar base * 2
-    """;
+                %estructuras
+                estructura Punto:
+                    entero x
+                    entero y
+                %funciones
+                calcularPoder(entero base) -> entero:
+                    retornar base * 2
+                """;
         yLexer lexerY = new yLexer(CharStreams.fromString(codigoY));
         YSangriaToken sangriaSource = new YSangriaToken(lexerY);
         yParser parserY = new yParser(new CommonTokenStream(sangriaSource));
@@ -214,10 +221,12 @@ public class Main {
         imprimirResultado("Y?", codigo, obtenido, esperado, errores);
     }
 
-    private static void imprimirResultado(String lenguaje, String codigo, Tipo obtenido, String esperado, List<ErrorSemantico> errores) {
+    private static void imprimirResultado(String lenguaje, String codigo, Tipo obtenido, String esperado,
+            List<ErrorSemantico> errores) {
         System.out.printf("[%s] '%s' -> Tipo: %s (Esperado: %s)\n", lenguaje, codigo, obtenido, esperado);
         for (ErrorSemantico err : errores) {
-            System.out.printf("   [Error detectado] %s (L:%d, C:%d)\n", err.getMensaje(), err.getLinea(), err.getColumna());
+            System.out.printf("   [Error detectado] %s (L:%d, C:%d)\n", err.getMensaje(), err.getLinea(),
+                    err.getColumna());
         }
     }
 
@@ -226,6 +235,41 @@ public class Main {
             System.out.println("[" + lenguaje + "] Sintaxis válida (0 errores).");
         } else {
             System.err.println("[" + lenguaje + "] Se detectaron " + errores + " errores sintácticos.");
+        }
+    }
+
+    public static void probarCustomErrorListener() {
+        System.out.println("\n=================================================");
+        System.out.println(">>> 6. VALIDACIÓN DE CAPTURA DE ERRORES (CustomErrorListener)");
+        System.out.println("=================================================");
+
+        List<ErrorCompilacion> erroresCapturados = new ArrayList<>();
+
+        String codigoConErrorLexico = """
+                MAIOR>
+                esto x : numerus 10 @;
+                FINIS;
+                """;
+        piglatinLexer lexerPig = new piglatinLexer(CharStreams.fromString(codigoConErrorLexico));
+        piglatinParser parserPig = new piglatinParser(new CommonTokenStream(lexerPig));
+        CustomErrorListener.asociar(lexerPig, parserPig, "programa_lexico.pig", erroresCapturados);
+        parserPig.programa();
+
+        String codigoConErrorSintactico = """
+                public class Prueba {
+                    public int suma(int a, int b {
+                        return a + b;
+                    }
+                }
+                """;
+        zetarianoLexer lexerZ = new zetarianoLexer(CharStreams.fromString(codigoConErrorSintactico));
+        zetarianoParser parserZ = new zetarianoParser(new CommonTokenStream(lexerZ));
+        CustomErrorListener.asociar(lexerZ, parserZ, "Prueba_sintactico.z", erroresCapturados);
+        parserZ.unidadCompilacion();
+
+        System.out.printf("\nTotal de errores capturados para UI: %d\n", erroresCapturados.size());
+        for (ErrorCompilacion err : erroresCapturados) {
+            System.out.println("  -> " + err);
         }
     }
 }
