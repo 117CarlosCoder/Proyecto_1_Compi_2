@@ -1,6 +1,7 @@
 package org.compi2.analisis_semantico;
 
 import lombok.Getter;
+import org.compi2.tipos.Tipo;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,13 +12,41 @@ public class Ambito {
     private final int nivel;
     private final Map<String, Simbolo> tablaSimbolos;
     private int desplazamientoActual;
+    private final boolean esBucle;
+    private final boolean esSwitch;
+    private final Tipo tipoRetornoEsperado;
 
     public Ambito(Ambito padre, String nombreAmbito, boolean reiniciarDesplazamiento) {
+        this(padre, nombreAmbito, reiniciarDesplazamiento, false, false, null);
+    }
+
+    public Ambito(Ambito padre, String nombreAmbito, boolean reiniciarDesplazamiento, boolean esBucle, boolean esSwitch, Tipo tipoRetornoEsperado) {
         this.padre = padre;
         this.nombreAmbito = nombreAmbito;
         this.nivel = (padre == null) ? 0 : padre.getNivel() + 1;
         this.tablaSimbolos = new HashMap<>();
         this.desplazamientoActual = (reiniciarDesplazamiento || padre == null) ? 0 : padre.desplazamientoActual;
+        this.esBucle = esBucle;
+        this.esSwitch = esSwitch;
+        this.tipoRetornoEsperado = (tipoRetornoEsperado != null) ? tipoRetornoEsperado : (padre != null ? padre.tipoRetornoEsperado : null);
+    }
+
+    public boolean estaEnBucle() {
+        for (Ambito actual = this; actual != null; actual = actual.padre) {
+            if (actual.esBucle) return true;
+        }
+        return false;
+    }
+
+    public boolean estaEnSwitch() {
+        for (Ambito actual = this; actual != null; actual = actual.padre) {
+            if (actual.esSwitch) return true;
+        }
+        return false;
+    }
+
+    public Tipo obtenerTipoRetornoEsperado() {
+        return this.tipoRetornoEsperado;
     }
 
     public int asignarDesplazamiento(int tamanoBytes) {

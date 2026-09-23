@@ -71,6 +71,33 @@ public class TablaSimbolos {
         pilaAmbitos.push(new Ambito(actual, nombre, esNuevoMarcoFuncion));
     }
 
+    public void abrirAmbitoBucle(String nombre) {
+        Ambito actual = pilaAmbitos.peek();
+        pilaAmbitos.push(new Ambito(actual, nombre, false, true, false, null));
+    }
+
+    public void abrirAmbitoSwitch(String nombre) {
+        Ambito actual = pilaAmbitos.peek();
+        pilaAmbitos.push(new Ambito(actual, nombre, false, false, true, null));
+    }
+
+    public void abrirAmbitoFuncion(String nombre, Tipo tipoRetorno) {
+        Ambito actual = pilaAmbitos.peek();
+        pilaAmbitos.push(new Ambito(actual, nombre, true, false, false, tipoRetorno));
+    }
+
+    public boolean estaEnBucle() {
+        return !pilaAmbitos.isEmpty() && pilaAmbitos.peek().estaEnBucle();
+    }
+
+    public boolean estaEnSwitch() {
+        return !pilaAmbitos.isEmpty() && pilaAmbitos.peek().estaEnSwitch();
+    }
+
+    public Tipo getTipoRetornoEsperado() {
+        return !pilaAmbitos.isEmpty() ? pilaAmbitos.peek().obtenerTipoRetornoEsperado() : null;
+    }
+
     public void cerrarAmbito() {
         if (pilaAmbitos.size() > 1) {
             pilaAmbitos.pop();

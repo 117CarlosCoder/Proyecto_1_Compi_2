@@ -114,4 +114,20 @@ public class ComprobadorTipos {
             t.getBase() == TipoBase.ESTRUCTURA ||
             t.getBase() == TipoBase.ARREGLO;
     }
+
+    public static Tipo resolverTernario(Tipo tTrue, Tipo tFalse) {
+        if (tTrue == null || tFalse == null) return Tipo.ERROR;
+        if (tTrue.getBase() == TipoBase.ERROR || tFalse.getBase() == TipoBase.ERROR) return Tipo.ERROR;
+
+        if (tTrue.esMismoTipo(tFalse)) return tTrue;
+
+        if (tTrue.getBase().esNumerico() && tFalse.getBase().esNumerico()) {
+            return (tTrue.getBase().getJerarquia() >= tFalse.getBase().getJerarquia()) ? tTrue : tFalse;
+        }
+
+        if (tTrue.getBase() == TipoBase.VOID && esTipoReferencia(tFalse)) return tFalse;
+        if (tFalse.getBase() == TipoBase.VOID && esTipoReferencia(tTrue)) return tTrue;
+
+        return Tipo.ERROR;
+    }
 }
