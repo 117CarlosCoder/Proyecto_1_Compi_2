@@ -6,15 +6,12 @@ import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
-import org.compi2.tipos.TipoBase;
 
 import java.util.List;
 
 @Getter
 @AllArgsConstructor
-public class NodoWhile implements NodoAST {
-    private final NodoAST condicion;
-    private final List<NodoAST> instrucciones;
+public class NodoBreak implements NodoAST {
     private final int linea;
     private final int columna;
 
@@ -23,22 +20,11 @@ public class NodoWhile implements NodoAST {
         String ambito = (tablaSimbolos.getAmbitoActual() != null) ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
                 : "Global";
 
-        Tipo tipoCond = condicion.comprobar(tablaSimbolos, errores);
-        if (tipoCond.getBase() != TipoBase.BOOLEANO && tipoCond.getBase() != TipoBase.ERROR) {
+        if (!tablaSimbolos.estaEnBucle() && !tablaSimbolos.estaEnSwitch()) {
             errores.add(new ErrorSemantico(
-                    "La condición del bucle debe ser de tipo booleano. Obtenido: " + tipoCond,
+                    "La sentencia de escape ('break', 'romper', 'interrumpe') debe encontrarse dentro de un ciclo o switch.",
                     ambito, linea, columna));
         }
-
-        tablaSimbolos.abrirAmbitoBucle("Bloque_While");
-        if (instrucciones != null) {
-            for (NodoAST inst : instrucciones) {
-                if (inst != null) {
-                    inst.comprobar(tablaSimbolos, errores);
-                }
-            }
-        }
-        tablaSimbolos.cerrarAmbito();
 
         return Tipo.VOID;
     }
