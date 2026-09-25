@@ -1,0 +1,25 @@
+public class Estudiante {
+    public int carnet;
+    public int nota1;
+    public int nota2;
+    public int nota3;
+
+    public Estudiante(int carnet, int n1, int n2, int n3) {
+        this.carnet = carnet;
+        this.nota1 = n1;
+        this.nota2 = n2;
+        this.nota3 = n3;
+    }
+
+    public int calcularPromedio() {
+        int suma;
+        suma = this.nota1 + this.nota2 + this.nota3;
+        return suma / 3;
+    }
+
+    public boolean estaAprobado() {
+        int prom;
+        prom = this.calcularPromedio();
+        return prom >= 61;
+    }
+}

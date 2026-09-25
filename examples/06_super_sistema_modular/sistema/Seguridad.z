@@ -1,0 +1,21 @@
+public class Seguridad {
+    public int pinSecreto;
+    public int intentos;
+
+    public Seguridad(int pin) {
+        this.pinSecreto = pin;
+        this.intentos = 0;
+    }
+
+    public int verificarAcceso(int pinIngresado) {
+        if (pinIngresado == this.pinSecreto) {
+            return 1;
+        }
+        this.intentos = this.intentos + 1;
+        return 0;
+    }
+
+    public int getIntentos() {
+        return this.intentos;
+    }
+}

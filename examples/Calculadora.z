@@ -1,0 +1,11 @@
+public class Calculadora {
+    public int factor;
+
+    public Calculadora(int factor) {
+        this.factor = factor;
+    }
+
+    public int multiplicar(int valor) {
+        return valor * this.factor;
+    }
+}

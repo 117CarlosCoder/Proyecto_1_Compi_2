@@ -1,0 +1,17 @@
+public class PlanoCartesiano {
+    public int origenX;
+    public int origenY;
+
+    public PlanoCartesiano(int ox, int oy) {
+        this.origenX = ox;
+        this.origenY = oy;
+    }
+
+    public int calcularDistanciaOrigen(int px, int py) {
+        int dx;
+        int dy;
+        dx = px - this.origenX;
+        dy = py - this.origenY;
+        return dx + dy;
+    }
+}

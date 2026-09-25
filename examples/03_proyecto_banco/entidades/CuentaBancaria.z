@@ -1,0 +1,26 @@
+public class CuentaBancaria {
+    public int idCliente;
+    public int saldo;
+
+    public CuentaBancaria(int id, int inicial) {
+        this.idCliente = id;
+        this.saldo = inicial;
+    }
+
+    public int depositar(int monto) {
+        this.saldo = this.saldo + monto;
+        return this.saldo;
+    }
+
+    public int retirar(int monto) {
+        if (this.saldo >= monto) {
+            this.saldo = this.saldo - monto;
+            return this.saldo;
+        }
+        return -1;
+    }
+
+    public int consultarSaldo() {
+        return this.saldo;
+    }
+}

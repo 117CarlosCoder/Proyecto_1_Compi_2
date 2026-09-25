@@ -1,0 +1,18 @@
+public class Logger {
+    public int nivel;
+    public int totalEventos;
+
+    public Logger(int niv) {
+        this.nivel = niv;
+        this.totalEventos = 0;
+    }
+
+    public int registrarEvento(int codigo) {
+        this.totalEventos = this.totalEventos + 1;
+        return this.totalEventos;
+    }
+
+    public int getTotalEventos() {
+        return this.totalEventos;
+    }
+}

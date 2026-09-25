@@ -1,0 +1,19 @@
+public class Estudiante {
+    public int carnet;
+    public int nota1;
+    public int nota2;
+
+    public Estudiante(int c, int n1, int n2) {
+        this.carnet = c;
+        this.nota1 = n1;
+        this.nota2 = n2;
+    }
+
+    public int calcularPromedio() {
+        return (this.nota1 + this.nota2) / 2;
+    }
+
+    public int getCarnet() {
+        return this.carnet;
+    }
+}

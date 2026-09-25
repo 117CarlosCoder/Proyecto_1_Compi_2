@@ -1,0 +1,19 @@
+public class Profesor {
+    public int colegiado;
+    public int cursos;
+    public int horasPorCurso;
+
+    public Profesor(int col, int cur, int horas) {
+        this.colegiado = col;
+        this.cursos = cur;
+        this.horasPorCurso = horas;
+    }
+
+    public int calcularCargaSemanal() {
+        return this.cursos * this.horasPorCurso;
+    }
+
+    public int getColegiado() {
+        return this.colegiado;
+    }
+}

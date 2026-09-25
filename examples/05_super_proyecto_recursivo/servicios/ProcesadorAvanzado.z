@@ -1,0 +1,42 @@
+public class ProcesadorAvanzado {
+    public int iteraciones;
+    public int totalCalculado;
+    public String estado;
+
+    public ProcesadorAvanzado(int iter) {
+        this.iteraciones = iter;
+        this.totalCalculado = 0;
+        this.estado = "INICIALIZADO";
+    }
+
+    public int potenciaRecursiva(int base, int exponente) {
+        if (exponente <= 0) {
+            return 1;
+        }
+        return base * this.potenciaRecursiva(base, exponente - 1);
+    }
+
+    public int mcdRecursivo(int a, int b) {
+        if (b == 0) {
+            return a;
+        }
+        return this.mcdRecursivo(b, a % b);
+    }
+
+    public int acumuladoConBucle(int limite) {
+        int acc;
+        int i;
+        acc = 0;
+        i = 1;
+        while (i <= limite) {
+            acc = acc + i;
+            i = i + 1;
+        }
+        return acc;
+    }
+
+    public int metodoConFaltaDeLogica(int parametroValido) {
+        variableQueNuncaFueDeclarada = 999;
+        return "cadena_incompatible_con_entero";
+    }
+}
