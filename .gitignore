@@ -42,4 +42,6 @@ build/
 enunciado/*
 
 ### Test ###
-./src/test/*
+src/test/
+/src/test/
+/src/test/*
