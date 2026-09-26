@@ -25,10 +25,24 @@ public class NodoLlamadaFuncion implements NodoAST {
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         Simbolo simboloFuncion = tablaSimbolos.buscarFuncionGlobal(nombreFuncion);
-        if (simboloFuncion == null) {
+        Tipo tipoFuncion = (simboloFuncion != null) ? simboloFuncion.getTipo() : null;
+        if (tipoFuncion == null) {
+            Simbolo sThis = tablaSimbolos.buscarSimbolo("this");
+            if (sThis != null && sThis.getTipo() != null) {
+                Tipo tClase = tablaSimbolos.buscarTipoCompuesto(sThis.getTipo().getNombreTipo());
+                if (tClase != null) {
+                    tipoFuncion = tClase.buscarMetodo(nombreFuncion);
+                }
+            }
+        }
+
+        if (tipoFuncion == null) {
+            String ambito = (tablaSimbolos.getAmbitoActual() != null)
+                    ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
+                    : "Global";
             errores.add(new ErrorSemantico(
-                "La función '" + nombreFuncion + "' no ha sido definida en ningún archivo .y importado.",
-                tablaSimbolos.getAmbitoActual().getNombreAmbito(), linea, columna));
+                "La función o método '" + nombreFuncion + "' no ha sido definida.",
+                ambito, linea, columna));
             return Tipo.ERROR;
         }
 
@@ -39,16 +53,19 @@ public class NodoLlamadaFuncion implements NodoAST {
             }
         }
 
-        List<Tipo> parametrosEsperados = simboloFuncion.getTipo().getParametros();
+        List<Tipo> parametrosEsperados = tipoFuncion.getParametros();
         if (parametrosEsperados == null) {
             parametrosEsperados = Collections.emptyList();
         }
 
         if (parametrosEsperados.size() != tiposArgs.size()) {
+            String ambito = (tablaSimbolos.getAmbitoActual() != null)
+                    ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
+                    : "Global";
             errores.add(new ErrorSemantico(
                 String.format("Cantidad de argumentos inválida para '%s'. Se esperaban %d pero se recibieron %d.",
                     nombreFuncion, parametrosEsperados.size(), tiposArgs.size()),
-                tablaSimbolos.getAmbitoActual().getNombreAmbito(), linea, columna));
+                ambito, linea, columna));
             return Tipo.ERROR;
         }
 
@@ -57,14 +74,17 @@ public class NodoLlamadaFuncion implements NodoAST {
             Tipo actual = tiposArgs.get(i);
 
             if (actual.getBase() != TipoBase.ERROR && !ComprobadorTipos.esCompatibleAsignacion(esperado, actual)) {
+                String ambito = (tablaSimbolos.getAmbitoActual() != null)
+                        ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
+                        : "Global";
                 errores.add(new ErrorSemantico(
                     String.format("Argumento %d incompatible en '%s': se esperaba %s y se recibió %s.",
                         i + 1, nombreFuncion, esperado, actual),
-                    tablaSimbolos.getAmbitoActual().getNombreAmbito(), linea, columna));
+                    ambito, linea, columna));
             }
         }
 
-        Tipo retorno = simboloFuncion.getTipo().getTipoRetorno();
+        Tipo retorno = tipoFuncion.getTipoRetorno();
         return (retorno != null) ? retorno : Tipo.VOID;
     }
 }

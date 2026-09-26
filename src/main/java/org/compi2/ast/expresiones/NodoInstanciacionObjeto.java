@@ -22,11 +22,15 @@ public class NodoInstanciacionObjeto implements NodoAST {
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         Tipo tipoClase = tablaSimbolos.buscarTipoCompuesto(nombreClase);
-        if (tipoClase == null || tipoClase.getBase() != TipoBase.OBJETO_CLASE) {
+        if (tipoClase == null || (tipoClase.getBase() != TipoBase.OBJETO_CLASE && tipoClase.getBase() != TipoBase.ESTRUCTURA)) {
             errores.add(new ErrorSemantico(
-                "La clase '" + nombreClase + "' no está definida ni importada desde ningún archivo .z.",
+                "El tipo '" + nombreClase + "' no está definido ni importado desde ningún archivo .z o .y.",
                 tablaSimbolos.getAmbitoActual().getNombreAmbito(), linea, columna));
             return Tipo.ERROR;
+        }
+
+        if (tipoClase.getBase() == TipoBase.ESTRUCTURA) {
+            return tipoClase;
         }
 
         List<Tipo> tiposArgs = new ArrayList<>();

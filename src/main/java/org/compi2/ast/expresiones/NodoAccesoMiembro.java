@@ -33,10 +33,12 @@ public class NodoAccesoMiembro implements NodoAST {
             return Tipo.ERROR;
         }
 
-        Tipo tipoCampo = tipoEstructura.buscarCampo(nombreCampo);
+        Tipo compuesto = tablaSimbolos.buscarTipoCompuesto(tipoEstructura.getNombreTipo());
+        Tipo tipoEfectivo = (compuesto != null) ? compuesto : tipoEstructura;
+        Tipo tipoCampo = tipoEfectivo.buscarCampo(nombreCampo);
         if (tipoCampo == null) {
             errores.add(new ErrorSemantico(
-                    String.format("El campo '%s' no existe en el tipo compuesto '%s'.",
+                    String.format("El campo '%s' no existe en el tipo '%s'.",
                             nombreCampo, tipoEstructura.getNombreTipo()),
                     ambito, linea, columna));
             return Tipo.ERROR;

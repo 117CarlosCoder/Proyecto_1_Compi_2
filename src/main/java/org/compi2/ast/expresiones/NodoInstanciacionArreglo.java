@@ -37,6 +37,14 @@ public class NodoInstanciacionArreglo implements NodoAST {
                         String.format("El tamaño de la dimensión %d del arreglo debe ser un entero. Obtenido: %s.",
                                 i + 1, tTam),
                         ambito, linea, columna));
+            } else {
+                Integer valConst = NodoListaValores.evaluarConstanteEntera(tam);
+                if (valConst != null && valConst <= 0) {
+                    errores.add(new ErrorSemantico(
+                            String.format("El tamaño de la dimensión %d del arreglo debe ser mayor a cero. Obtenido: %d.",
+                                    i + 1, valConst),
+                            ambito, linea, columna));
+                }
             }
         }
 
