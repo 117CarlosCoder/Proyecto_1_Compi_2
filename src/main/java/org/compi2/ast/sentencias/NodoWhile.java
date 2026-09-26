@@ -31,14 +31,17 @@ public class NodoWhile implements NodoAST {
         }
 
         tablaSimbolos.abrirAmbitoBucle("Bloque_While");
-        if (instrucciones != null) {
-            for (NodoAST inst : instrucciones) {
-                if (inst != null) {
-                    inst.comprobar(tablaSimbolos, errores);
+        try {
+            if (instrucciones != null) {
+                for (NodoAST inst : instrucciones) {
+                    if (inst != null) {
+                        inst.comprobar(tablaSimbolos, errores);
+                    }
                 }
             }
+        } finally {
+            tablaSimbolos.cerrarAmbito();
         }
-        tablaSimbolos.cerrarAmbito();
 
         return Tipo.VOID;
     }

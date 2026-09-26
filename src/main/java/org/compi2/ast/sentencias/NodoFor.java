@@ -25,34 +25,35 @@ public class NodoFor implements NodoAST {
         String ambito = (tablaSimbolos.getAmbitoActual() != null) ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
                 : "Global";
 
-        tablaSimbolos.abrirAmbitoBucle("Bloque_For");
-
-        if (inicializacion != null) {
-            inicializacion.comprobar(tablaSimbolos, errores);
-        }
-
-        if (condicion != null) {
-            Tipo tipoCond = condicion.comprobar(tablaSimbolos, errores);
-            if (tipoCond.getBase() != TipoBase.BOOLEANO && tipoCond.getBase() != TipoBase.ERROR) {
-                errores.add(new ErrorSemantico(
-                        "La condición del ciclo ('for', 'per', 'para') debe ser booleana. Obtenido: " + tipoCond,
-                        ambito, linea, columna));
+        tablaSimbolos.abrirAmbitoBucle("Ambito_For");
+        try {
+            if (inicializacion != null) {
+                inicializacion.comprobar(tablaSimbolos, errores);
             }
-        }
 
-        if (paso != null) {
-            paso.comprobar(tablaSimbolos, errores);
-        }
-
-        if (cuerpo != null) {
-            for (NodoAST inst : cuerpo) {
-                if (inst != null) {
-                    inst.comprobar(tablaSimbolos, errores);
+            if (condicion != null) {
+                Tipo tipoCond = condicion.comprobar(tablaSimbolos, errores);
+                if (tipoCond.getBase() != TipoBase.BOOLEANO && tipoCond.getBase() != TipoBase.ERROR) {
+                    errores.add(new ErrorSemantico(
+                            "La condición del ciclo ('for', 'per', 'para') debe ser booleana. Obtenido: " + tipoCond,
+                            ambito, linea, columna));
                 }
             }
-        }
 
-        tablaSimbolos.cerrarAmbito();
+            if (paso != null) {
+                paso.comprobar(tablaSimbolos, errores);
+            }
+
+            if (cuerpo != null) {
+                for (NodoAST inst : cuerpo) {
+                    if (inst != null) {
+                        inst.comprobar(tablaSimbolos, errores);
+                    }
+                }
+            }
+        } finally {
+            tablaSimbolos.cerrarAmbito();
+        }
         return Tipo.VOID;
     }
 }

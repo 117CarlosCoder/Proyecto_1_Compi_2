@@ -28,31 +28,37 @@ public class NodoIf implements NodoAST {
         Tipo tipoCond = condicion.comprobar(tablaSimbolos, errores);
         if (tipoCond.getBase() != TipoBase.BOOLEANO && tipoCond.getBase() != TipoBase.ERROR) {
             errores.add(new ErrorSemantico(
-                "La condición del condicional debe ser booleana. Se obtuvo: " + tipoCond,
+                "La condición debe ser booleana. Se obtuvo: " + tipoCond,
                 ambitoActual,
                 linea,
                 columna
             ));
         }
 
-        tablaSimbolos.abrirAmbito("Bloque_Si");
-        if (instruccionesSi != null) {
-            for (NodoAST inst : instruccionesSi) {
-                if (inst != null) {
-                    inst.comprobar(tablaSimbolos, errores);
+        tablaSimbolos.abrirAmbito("Ambito_IF");
+        try {
+            if (instruccionesSi != null) {
+                for (NodoAST inst : instruccionesSi) {
+                    if (inst != null) {
+                        inst.comprobar(tablaSimbolos, errores);
+                    }
                 }
             }
+        } finally {
+            tablaSimbolos.cerrarAmbito();
         }
-        tablaSimbolos.cerrarAmbito();
 
         if (instruccionesAliter != null && !instruccionesAliter.isEmpty()) {
-            tablaSimbolos.abrirAmbito("Bloque_Aliter");
-            for (NodoAST inst : instruccionesAliter) {
-                if (inst != null) {
-                    inst.comprobar(tablaSimbolos, errores);
+            tablaSimbolos.abrirAmbito("Ambito_Aliter");
+            try {
+                for (NodoAST inst : instruccionesAliter) {
+                    if (inst != null) {
+                        inst.comprobar(tablaSimbolos, errores);
+                    }
                 }
+            } finally {
+                tablaSimbolos.cerrarAmbito();
             }
-            tablaSimbolos.cerrarAmbito();
         }
 
         return Tipo.VOID;

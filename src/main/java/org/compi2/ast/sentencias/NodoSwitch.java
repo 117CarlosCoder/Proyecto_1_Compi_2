@@ -37,42 +37,43 @@ public class NodoSwitch implements NodoAST {
         Tipo tipoControl = expresionControl.comprobar(tablaSimbolos, errores);
 
         tablaSimbolos.abrirAmbitoSwitch("Bloque_Switch");
-
-        if (casos != null) {
-            for (CasoSwitch caso : casos) {
-                if (caso.getValorCaso() != null) {
-                    Tipo tCaso = caso.getValorCaso().comprobar(tablaSimbolos, errores);
-                    if (tipoControl.getBase() != TipoBase.ERROR && tCaso.getBase() != TipoBase.ERROR) {
-                        if (!ComprobadorTipos.esCompatibleAsignacion(tipoControl, tCaso)
-                                && !tipoControl.esMismoTipo(tCaso)) {
-                            errores.add(new ErrorSemantico(
-                                    String.format(
-                                            "El tipo del caso (%s) no es compatible con el tipo evaluado en el switch (%s).",
-                                            tCaso, tipoControl),
-                                    ambito, caso.getLinea(), caso.getColumna()));
+        try {
+            if (casos != null) {
+                for (CasoSwitch caso : casos) {
+                    if (caso.getValorCaso() != null) {
+                        Tipo tCaso = caso.getValorCaso().comprobar(tablaSimbolos, errores);
+                        if (tipoControl.getBase() != TipoBase.ERROR && tCaso.getBase() != TipoBase.ERROR) {
+                            if (!ComprobadorTipos.esCompatibleAsignacion(tipoControl, tCaso)
+                                    && !tipoControl.esMismoTipo(tCaso)) {
+                                errores.add(new ErrorSemantico(
+                                        String.format(
+                                                "El tipo (%s) no es compatible con el tipo evaluado en el switch (%s).",
+                                                tCaso, tipoControl),
+                                        ambito, caso.getLinea(), caso.getColumna()));
+                            }
                         }
                     }
-                }
 
-                if (caso.getInstrucciones() != null) {
-                    for (NodoAST inst : caso.getInstrucciones()) {
-                        if (inst != null) {
-                            inst.comprobar(tablaSimbolos, errores);
+                    if (caso.getInstrucciones() != null) {
+                        for (NodoAST inst : caso.getInstrucciones()) {
+                            if (inst != null) {
+                                inst.comprobar(tablaSimbolos, errores);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        if (casoDefecto != null) {
-            for (NodoAST inst : casoDefecto) {
-                if (inst != null) {
-                    inst.comprobar(tablaSimbolos, errores);
+            if (casoDefecto != null) {
+                for (NodoAST inst : casoDefecto) {
+                    if (inst != null) {
+                        inst.comprobar(tablaSimbolos, errores);
+                    }
                 }
             }
+        } finally {
+            tablaSimbolos.cerrarAmbito();
         }
-
-        tablaSimbolos.cerrarAmbito();
         return Tipo.VOID;
     }
 }
