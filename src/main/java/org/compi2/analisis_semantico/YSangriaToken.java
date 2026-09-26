@@ -17,6 +17,7 @@ public class YSangriaToken implements TokenSource {
     private final yLexer lexer;
     private final Stack<Integer> pilaSangrias = new Stack<>();
     private final Queue<Token> colaTokens = new LinkedList<>();
+    private int ultimoTipoEmitido = -1;
 
     public YSangriaToken(yLexer lexer) {
         this.lexer = lexer;
@@ -26,7 +27,9 @@ public class YSangriaToken implements TokenSource {
     @Override
     public Token nextToken() {
         if (!colaTokens.isEmpty()) {
-            return colaTokens.poll();
+            Token r = colaTokens.poll();
+            ultimoTipoEmitido = r.getType();
+            return r;
         }
 
         Token t = lexer.nextToken();
@@ -53,18 +56,26 @@ public class YSangriaToken implements TokenSource {
                     colaTokens.add(crearToken(yParser.FIN_SANGRIA, t));
                 }
             }
-            return colaTokens.poll();
+            Token r = colaTokens.poll();
+            ultimoTipoEmitido = r != null ? r.getType() : -1;
+            return r;
         }
 
         if (t.getType() == yLexer.EOF) {
+            if (ultimoTipoEmitido != yLexer.NUEVA_LINEA && ultimoTipoEmitido != yParser.FIN_SANGRIA && ultimoTipoEmitido != -1) {
+                colaTokens.add(crearToken(yLexer.NUEVA_LINEA, t));
+            }
             while (pilaSangrias.size() > 1) {
                 pilaSangrias.pop();
                 colaTokens.add(crearToken(yParser.FIN_SANGRIA, t));
             }
             colaTokens.add(t);
-            return colaTokens.poll();
+            Token r = colaTokens.poll();
+            ultimoTipoEmitido = r != null ? r.getType() : -1;
+            return r;
         }
 
+        ultimoTipoEmitido = t.getType();
         return t;
     }
 

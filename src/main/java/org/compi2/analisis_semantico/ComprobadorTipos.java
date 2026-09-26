@@ -12,12 +12,20 @@ public class ComprobadorTipos {
         if (origen.getBase() == TipoBase.VOID) {
             return destino.getBase() == TipoBase.OBJETO_CLASE ||
                 destino.getBase() == TipoBase.ESTRUCTURA ||
-                destino.getBase() == TipoBase.ARREGLO;
+                destino.getBase() == TipoBase.ARREGLO ||
+                destino.getBase().esNumerico();
         }
 
         if (destino.getBase() == TipoBase.VOID) return false;
 
         if (destino.esMismoTipo(origen)) return true;
+
+        if ((destino.getBase() == TipoBase.ESTRUCTURA || destino.getBase() == TipoBase.OBJETO_CLASE)
+                && (origen.getBase() == TipoBase.ESTRUCTURA || origen.getBase() == TipoBase.OBJETO_CLASE)) {
+            if (destino.getNombreTipo() != null && destino.getNombreTipo().equals(origen.getNombreTipo())) {
+                return true;
+            }
+        }
 
         if (destino.getBase().esNumerico() && origen.getBase().esNumerico()) {
             return destino.getBase().getJerarquia() >= origen.getBase().getJerarquia();
