@@ -11,7 +11,7 @@ public class Ambito {
     private final String nombreAmbito;
     private final int nivel;
     private final Map<String, Simbolo> tablaSimbolos;
-    private int desplazamientoActual;
+    private final ContadorDesplazamiento contadorDesplazamiento;
     private final boolean esBucle;
     private final boolean esSwitch;
     private final Tipo tipoRetornoEsperado;
@@ -25,7 +25,11 @@ public class Ambito {
         this.nombreAmbito = nombreAmbito;
         this.nivel = (padre == null) ? 0 : padre.getNivel() + 1;
         this.tablaSimbolos = new HashMap<>();
-        this.desplazamientoActual = (reiniciarDesplazamiento || padre == null) ? 0 : padre.desplazamientoActual;
+        if (reiniciarDesplazamiento || padre == null || padre.contadorDesplazamiento == null) {
+            this.contadorDesplazamiento = new ContadorDesplazamiento();
+        } else {
+            this.contadorDesplazamiento = padre.contadorDesplazamiento;
+        }
         this.esBucle = esBucle;
         this.esSwitch = esSwitch;
         this.tipoRetornoEsperado = (tipoRetornoEsperado != null) ? tipoRetornoEsperado : (padre != null ? padre.tipoRetornoEsperado : null);
@@ -49,13 +53,12 @@ public class Ambito {
         return this.tipoRetornoEsperado;
     }
 
+    public int getDesplazamientoActual() {
+        return this.contadorDesplazamiento != null ? this.contadorDesplazamiento.getActual() : 0;
+    }
+
     public int asignarDesplazamiento(int tamanoBytes) {
-        int posicionAsignada = this.desplazamientoActual;
-        this.desplazamientoActual += tamanoBytes;
-        if (padre != null && this.nivel > padre.nivel) {
-            padre.desplazamientoActual = this.desplazamientoActual;
-        }
-        return posicionAsignada;
+        return this.contadorDesplazamiento.asignar(tamanoBytes);
     }
 
     public boolean existeEnAmbitoActual(String nombre) {
@@ -68,10 +71,6 @@ public class Ambito {
         }
         tablaSimbolos.put(s.getNombre(), s);
         return true;
-    }
-
-    public Simbolo obtenerActual(String nombre) {
-        return tablaSimbolos.get(nombre);
     }
 
     public Simbolo obtener(String nombre) {

@@ -11,6 +11,8 @@ public class TablaSimbolos {
     private final Map<String, Tipo> catalogoTiposCompuestos = new HashMap<>();
     private final Map<String, Simbolo> catalogoFuncionesGlobales = new HashMap<>();
     private int contadorId = 1;
+    private String lenguajeActual = "Pig Latin";
+    private String archivoActual = "principal.pig";
 
     public TablaSimbolos() {
         reiniciar();
@@ -22,7 +24,14 @@ public class TablaSimbolos {
         catalogoTiposCompuestos.clear();
         catalogoFuncionesGlobales.clear();
         contadorId = 1;
+        lenguajeActual = "Pig Latin";
+        archivoActual = "principal.pig";
         pilaAmbitos.push(new Ambito(null, "Global", true));
+    }
+
+    public void setContextoOrigen(String lenguaje, String archivo) {
+        this.lenguajeActual = (lenguaje != null && !lenguaje.isEmpty()) ? lenguaje : "Pig Latin";
+        this.archivoActual = (archivo != null && !archivo.isEmpty()) ? archivo : "—";
     }
 
     public boolean registrarTipoCompuesto(Tipo tipo) {
@@ -41,6 +50,42 @@ public class TablaSimbolos {
         return catalogoTiposCompuestos.containsKey(nombre);
     }
 
+    public Simbolo registrarEstructura(String nombre, Tipo tipoEstructura, int linea, int columna) {
+        Simbolo s = new Simbolo(contadorId++, nombre, tipoEstructura, "estructura", "Global", linea, columna, 0, lenguajeActual, archivoActual);
+        registroHistorico.add(s);
+        return s;
+    }
+
+    public Simbolo registrarCampoEstructura(String nombreEstructura, String nombreCampo, Tipo tipoCampo, int linea, int columna, int offsetEnStruct) {
+        Simbolo s = new Simbolo(contadorId++, nombreCampo, tipoCampo, "campo_estructura", "Estructura_" + nombreEstructura, linea, columna, offsetEnStruct, lenguajeActual, archivoActual);
+        registroHistorico.add(s);
+        return s;
+    }
+
+    public Simbolo registrarClase(String nombre, Tipo tipoClase, int linea, int columna) {
+        Simbolo s = new Simbolo(contadorId++, nombre, tipoClase, "clase", "Global", linea, columna, 0, lenguajeActual, archivoActual);
+        registroHistorico.add(s);
+        return s;
+    }
+
+    public Simbolo registrarCampoClase(String nombreClase, String nombreCampo, Tipo tipoCampo, int linea, int columna, int offsetEnClase) {
+        Simbolo s = new Simbolo(contadorId++, nombreCampo, tipoCampo, "campo_clase", "Clase_" + nombreClase, linea, columna, offsetEnClase, lenguajeActual, archivoActual);
+        registroHistorico.add(s);
+        return s;
+    }
+
+    public Simbolo registrarMetodoClase(String nombreClase, String nombreMetodo, Tipo tipoMetodo, int linea, int columna) {
+        Simbolo s = new Simbolo(contadorId++, nombreMetodo, tipoMetodo, "metodo", "Clase_" + nombreClase, linea, columna, 0, lenguajeActual, archivoActual);
+        registroHistorico.add(s);
+        return s;
+    }
+
+    public Simbolo registrarConstructorClase(String nombreClase, Tipo tipoConstructor, int linea, int columna) {
+        Simbolo s = new Simbolo(contadorId++, nombreClase, tipoConstructor, "constructor", "Clase_" + nombreClase, linea, columna, 0, lenguajeActual, archivoActual);
+        registroHistorico.add(s);
+        return s;
+    }
+
     public Simbolo registrarFuncionGlobal(String nombre, Tipo tipoFuncion, int linea, int columna) {
         if (catalogoFuncionesGlobales.containsKey(nombre)) {
             return null;
@@ -51,7 +96,7 @@ public class TablaSimbolos {
             return null;
         }
 
-        Simbolo f = new Simbolo(contadorId++, nombre, tipoFuncion, "funcion", "Global", linea, columna, 0);
+        Simbolo f = new Simbolo(contadorId++, nombre, tipoFuncion, "funcion", "Global", linea, columna, 0, lenguajeActual, archivoActual);
         catalogoFuncionesGlobales.put(nombre, f);
         ambitoGlobal.insertar(f);
         registroHistorico.add(f);
@@ -125,7 +170,9 @@ public class TablaSimbolos {
             actual.getNombreAmbito(),
             linea,
             columna,
-            offset
+            offset,
+            lenguajeActual,
+            archivoActual
         );
 
         actual.insertar(nuevo);
