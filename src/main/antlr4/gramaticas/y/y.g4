@@ -6,11 +6,11 @@ tokens {
 }
 
 programa
-    : seccionEstructuras? seccionFunciones? EOF
+    : NUEVA_LINEA* seccionEstructuras? NUEVA_LINEA* seccionFunciones? NUEVA_LINEA* EOF
     ;
 
 seccionEstructuras
-    : SEC_ESTRUCTURAS NUEVA_LINEA definicionEstructura*
+    : SEC_ESTRUCTURAS NUEVA_LINEA+ (definicionEstructura | NUEVA_LINEA)*
     ;
 
 definicionEstructura
@@ -18,7 +18,7 @@ definicionEstructura
     ;
 
 bloqueCampos
-    : NUEVA_LINEA SANGRIA campoEstructura+ FIN_SANGRIA
+    : NUEVA_LINEA+ SANGRIA (campoEstructura | NUEVA_LINEA)* FIN_SANGRIA
     ;
 
 campoEstructura
@@ -26,11 +26,11 @@ campoEstructura
     ;
 
 seccionFunciones
-    : SEC_FUNCIONES NUEVA_LINEA definicionFuncion*
+    : SEC_FUNCIONES NUEVA_LINEA+ (definicionFuncion | NUEVA_LINEA)*
     ;
 
 definicionFuncion
-    : ID PAR_IZQ parametros? PAR_DER (FLECHA tipo)? DOS_PUNTOS bloque
+    : DEFINIR? ID PAR_IZQ parametros? PAR_DER (FLECHA tipo)? DOS_PUNTOS bloque
     ;
 
 parametros
@@ -38,7 +38,7 @@ parametros
     ;
 
 parametro
-    : tipo (CORCHETE_IZQ CORCHETE_DER)? ID
+    : (CORCHETE_IZQ CORCHETE_DER)* (LLAVE_IZQ LLAVE_DER)? tipo (CORCHETE_IZQ CORCHETE_DER)* ID
     ;
 
 tipo
@@ -51,15 +51,16 @@ tipo
     ;
 
 bloque
-    : NUEVA_LINEA SANGRIA instruccion+ FIN_SANGRIA
+    : NUEVA_LINEA+ SANGRIA (instruccion | NUEVA_LINEA)* FIN_SANGRIA
     ;
 
 finLinea
-    : PUNTO_Y_COMA? NUEVA_LINEA
+    : PUNTO_Y_COMA? (NUEVA_LINEA | EOF)
     ;
 
 instruccion
-    : declaracionVariable finLinea                                      # InstDeclaracion
+    : definicionEstructura                                              # InstDefinicionEstructura
+    | declaracionVariable finLinea                                      # InstDeclaracion
     | asignacion finLinea                                               # InstAsignacion
     | incrementoDecremento finLinea                                     # InstIncDec
     | llamadaFuncion finLinea                                           # InstLlamada
@@ -208,6 +209,7 @@ CONTINUAR   : 'continuar';
 RETORNAR    : 'retornar';
 IMPRIMIR    : 'imprimir';
 LEER        : 'leer';
+DEFINIR     : 'definir';
 
 TIPO_ENTERO     : 'entero';
 TIPO_FLOTANTE   : 'flotante';
@@ -256,7 +258,7 @@ LIT_ENTERO
     ;
 
 LIT_CADENA
-    : ('"' | '“' | '”') (~["“”\r\n\\] | '\\' .)* ('"' | '“' | '”')
+    : ('"' | '\u201C' | '\u201D') (~["\u201C\u201D\r\n\\] | '\\' .)* ('"' | '\u201C' | '\u201D')
     ;
 
 LIT_CARACTER
