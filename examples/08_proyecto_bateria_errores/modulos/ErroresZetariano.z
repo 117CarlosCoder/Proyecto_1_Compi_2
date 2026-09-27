@@ -1,0 +1,26 @@
+public class ErroresZetariano {
+    int valor;
+    int valor;
+    String nombre;
+
+    public ErroresZetariano(int v) {
+        valor = v;
+        break;
+    }
+
+    public void metodoInvalido() {
+        int x = 10;
+        return x;
+    }
+
+    public int sumar(int a, int b) {
+        String texto = "hola";
+        return texto;
+    }
+
+    public void probarErrores() {
+        this.campoFantasma = 50;
+        this.metodoFantasma();
+        continue;
+    }
+}

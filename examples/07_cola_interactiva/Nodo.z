@@ -1,0 +1,25 @@
+public class Nodo {
+    int valor;
+    Nodo siguiente;
+
+    public Nodo(int v) {
+        valor = v;
+        siguiente = null;
+    }
+
+    public int getValor() {
+        return valor;
+    }
+
+    public void setValor(int v) {
+        valor = v;
+    }
+
+    public Nodo getSiguiente() {
+        return siguiente;
+    }
+
+    public void setSiguiente(Nodo sig) {
+        siguiente = sig;
+    }
+}

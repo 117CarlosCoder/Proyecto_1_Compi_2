@@ -1,0 +1,67 @@
+public class Cola {
+    Nodo frente;
+    Nodo fin;
+    int longitud;
+
+    public Cola() {
+        this.frente = null;
+        this.fin = null;
+        this.longitud = 0;
+    }
+
+    public boolean estaVacia() {
+        return frente == null;
+    }
+
+    public int obtenerLongitud() {
+        return longitud;
+    }
+
+    public void encolar(int nuevoValor) {
+        Nodo nuevoNodo = new Nodo(nuevoValor);
+        if (estaVacia()) {
+            frente = nuevoNodo;
+            fin = nuevoNodo;
+        } else {
+            fin.setSiguiente(nuevoNodo);
+            fin = nuevoNodo;
+        }
+        longitud++;
+    }
+
+    public int desencolar() {
+        if (estaVacia()) {
+            return -1;
+        }
+        int valorFrente = frente.getValor();
+        frente = frente.getSiguiente();
+        if (frente == null) {
+            fin = null;
+        }
+        longitud--;
+        return valorFrente;
+    }
+
+    public int verFrente() {
+        if (estaVacia()) {
+            return -1;
+        }
+        return frente.getValor();
+    }
+
+    public String toString() {
+        String res = "Cola [Frente -> Fin]: ";
+        if (estaVacia()) {
+            return res + "(Vacia)";
+        }
+        Nodo actual = frente;
+        while (actual != null) {
+            res = res + actual.getValor();
+            if (actual.getSiguiente() != null) {
+                res = res + " -> ";
+            }
+            actual = actual.getSiguiente();
+        }
+        return res;
+    }
+}
