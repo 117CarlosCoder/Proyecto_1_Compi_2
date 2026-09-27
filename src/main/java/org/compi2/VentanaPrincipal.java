@@ -121,10 +121,20 @@ public class VentanaPrincipal extends JFrame {
         etiquetaZoom.setFont(FUENTE_UI);
         botonDetener.setEnabled(false);
         botonCompilar.addActionListener(this::accionCompilar);
-        botonDetener.addActionListener(e -> detenerEjecucion());
         panelArbol = new PanelArbolProyecto(this::cargarArchivoEnEditor);
-
-        barraProgreso.setIndeterminate(true);
+        panelArbol.setAlGuardarArchivo(this::guardarArchivo);
+        panelArbol.setAlEliminarArchivo(archivoEliminado -> {
+            if (archivoActual != null && archivoActual.equals(archivoEliminado)) {
+                limpiarEntorno();
+            }
+        });
+        panelArbol.setAlRenombrarArchivo((anterior, nuevo) -> {
+            if (archivoActual != null && archivoActual.equals(anterior)) {
+                archivoActual = nuevo;
+                etiquetaEditor.setText(" 📝 Editor — " + nuevo.getName());
+            }
+        });
+        panelArbol.setNotificadorEstado(this::actualizarEstado);
         barraProgreso.setVisible(false);
         barraProgreso.setPreferredSize(new Dimension(150, 14));
 
@@ -179,9 +189,11 @@ public class VentanaPrincipal extends JFrame {
         b.add(crearBotonSecundario("✕ Limpiar", e -> limpiarEntorno()));
         b.addSeparator();
 
+        b.add(crearBotonSecundario("📦 Nuevo Proy.", e -> panelArbol.crearNuevoProyecto()));
         b.add(crearBotonSecundario("📂 Abrir", e -> abrirArchivo()));
         b.add(crearBotonSecundario("💾 Guardar", e -> guardarArchivo()));
         b.add(crearBotonSecundario("💾 Guardar Como", e -> guardarArchivoComo()));
+        b.add(crearBotonSecundario("📥 Descargar ZIP", e -> panelArbol.descargarOExportarProyectoZip()));
 
         b.add(Box.createGlue());
         b.add(crearBotonSecundario("📊 Símbolos",
@@ -228,7 +240,7 @@ public class VentanaPrincipal extends JFrame {
 
     private JPanel crearPanelGraficoAst() {
         JPanel p = new JPanel(new BorderLayout());
-        JPanel  mini = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        JPanel mini = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         JLabel lblVista = new JLabel(" Árbol:");
         lblVista.setFont(FUENTE_UI_BOLD);
         mini.add(lblVista);
