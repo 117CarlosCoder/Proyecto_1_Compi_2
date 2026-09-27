@@ -86,6 +86,16 @@ public class TablaSimbolos {
         return s;
     }
 
+    public boolean tieneConstructor(String nombreClase) {
+        if (nombreClase == null) return false;
+        for (Simbolo s : registroHistorico) {
+            if ("constructor".equals(s.getCategoria()) && ("Clase_" + nombreClase).equals(s.getAmbito())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Simbolo registrarFuncionGlobal(String nombre, Tipo tipoFuncion, int linea, int columna) {
         if (catalogoFuncionesGlobales.containsKey(nombre)) {
             return null;
