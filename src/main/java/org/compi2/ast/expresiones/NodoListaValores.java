@@ -113,7 +113,7 @@ public class NodoListaValores implements NodoAST {
                     && !ComprobadorTipos.esCompatibleAsignacion(tipoElementoEsperado, tipoElemento)) {
                 errores.add(new ErrorSemantico(
                         String.format(
-                                "Elemento %d de la lista con el arreglo: se esperaba '%s' y se obtuvo '%s'.",
+                                "Elemento %d de la lista incompatible con el arreglo: se esperaba '%s' y se obtuvo '%s'.",
                                 i + 1, tipoElementoEsperado, tipoElemento),
                         ambito, linea, columna));
                 valido = false;
@@ -164,7 +164,7 @@ public class NodoListaValores implements NodoAST {
             if (tipoElemento.getBase() != TipoBase.ERROR && tipoCampo != null) {
                 if (!ComprobadorTipos.esCompatibleAsignacion(tipoCampo, tipoElemento)) {
                     errores.add(new ErrorSemantico(
-                            String.format("Campo no compatible '%s' (posición %d) de la estructura '%s': se esperaba '%s' y se obtuvo '%s'.",
+                            String.format("Incompatibilidad en el campo '%s' (posición %d) de la estructura '%s': se esperaba '%s' y se obtuvo '%s'.",
                                     nombreCampo, i + 1, tipoEstructura.getNombreTipo(), tipoCampo, tipoElemento),
                             ambito, linea, columna));
                     valido = false;

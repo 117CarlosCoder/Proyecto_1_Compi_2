@@ -305,11 +305,20 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
         NodoAST control = visit(ctx.expresion());
         List<NodoSwitch.CasoSwitch> casos = new ArrayList<>();
 
-        if (ctx.seccionCaso() != null) {
-            for (yParser.SeccionCasoContext sc : ctx.seccionCaso()) {
+        List<yParser.SeccionCasoContext> listaCasos = (ctx.bloqueElegir() != null)
+                ? ctx.bloqueElegir().seccionCaso()
+                : ctx.seccionCaso();
+
+        if (listaCasos != null) {
+            for (yParser.SeccionCasoContext sc : listaCasos) {
                 NodoAST valorCaso = visit(sc.literal());
                 List<NodoAST> insts = new ArrayList<>();
-                if (sc.instruccionSuelta() != null) {
+                if (sc.bloque() != null && sc.bloque().instruccion() != null) {
+                    for (yParser.InstruccionContext ic : sc.bloque().instruccion()) {
+                        NodoAST n = visit(ic);
+                        if (n != null) insts.add(n);
+                    }
+                } else if (sc.instruccionSuelta() != null) {
                     for (yParser.InstruccionSueltaContext is : sc.instruccionSuelta()) {
                         NodoAST n = visit(is);
                         if (n != null) insts.add(n);
@@ -319,11 +328,25 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
             }
         }
 
+        yParser.SeccionSiempreContext secSiempre = null;
+        if (ctx.bloqueElegir() != null) {
+            if (!ctx.bloqueElegir().seccionSiempre().isEmpty()) {
+                secSiempre = ctx.bloqueElegir().seccionSiempre().get(0);
+            }
+        } else {
+            secSiempre = ctx.seccionSiempre();
+        }
+
         List<NodoAST> casoDefecto = null;
-        if (ctx.seccionSiempre() != null) {
+        if (secSiempre != null) {
             casoDefecto = new ArrayList<>();
-            if (ctx.seccionSiempre().instruccionSuelta() != null) {
-                for (yParser.InstruccionSueltaContext is : ctx.seccionSiempre().instruccionSuelta()) {
+            if (secSiempre.bloque() != null && secSiempre.bloque().instruccion() != null) {
+                for (yParser.InstruccionContext ic : secSiempre.bloque().instruccion()) {
+                    NodoAST n = visit(ic);
+                    if (n != null) casoDefecto.add(n);
+                }
+            } else if (secSiempre.instruccionSuelta() != null) {
+                for (yParser.InstruccionSueltaContext is : secSiempre.instruccionSuelta()) {
                     NodoAST n = visit(is);
                     if (n != null) casoDefecto.add(n);
                 }

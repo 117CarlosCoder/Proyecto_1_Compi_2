@@ -120,17 +120,22 @@ condicionalSi
     ;
 
 seleccionElegir
-    : ELEGIR PAR_IZQ expresion PAR_DER LLAVE_IZQ
-      seccionCaso* seccionSiempre?
-      LLAVE_DER finLinea?
+    : ELEGIR PAR_IZQ expresion PAR_DER DOS_PUNTOS bloqueElegir
+    | ELEGIR PAR_IZQ expresion PAR_DER LLAVE_IZQ seccionCaso* seccionSiempre? LLAVE_DER finLinea?
+    ;
+
+bloqueElegir
+    : NUEVA_LINEA+ SANGRIA (seccionCaso | seccionSiempre | NUEVA_LINEA)* FIN_SANGRIA
     ;
 
 seccionCaso
-    : CASO literal DOS_PUNTOS instruccionSuelta*
+    : CASO literal DOS_PUNTOS bloque
+    | CASO literal DOS_PUNTOS instruccionSuelta*
     ;
 
 seccionSiempre
-    : SIEMPRE DOS_PUNTOS instruccionSuelta*
+    : SIEMPRE DOS_PUNTOS bloque
+    | SIEMPRE DOS_PUNTOS instruccionSuelta*
     ;
 
 instruccionSuelta
