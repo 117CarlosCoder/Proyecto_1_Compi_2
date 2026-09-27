@@ -682,9 +682,12 @@ package "org.compi2.c3d" {
         PRINT_DOUBLE
         PRINT_CHAR
         PRINT_STR
-        COMENTARIO
+        READ_NUM
+        READ_STR
+        CONCAT_STR_STR
+        CONCAT_STR_NUM
+        CONCAT_NUM_STR
         -simbolo: String
-        -descripcion: String
         +getSimbolo(): String
     }
 
@@ -693,7 +696,6 @@ package "org.compi2.c3d" {
         -arg1: String
         -arg2: String
         -resultado: String
-        -comentario: String
         +toCodigoC(): String
     }
 
