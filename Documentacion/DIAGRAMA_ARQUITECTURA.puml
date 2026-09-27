@@ -1,0 +1,148 @@
+@startuml
+!pragma layout smetana
+
+skinparam defaultFontName "Segoe UI"
+skinparam fontSize 10
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam packageBackgroundColor #F8F9FA
+skinparam packageBorderColor #495057
+skinparam componentStyle uml2
+
+skinparam rectangle {
+    BackgroundColor<<ui>> #E3F2FD
+    BorderColor<<ui>> #1565C0
+    BackgroundColor<<front>> #E8F5E9
+    BorderColor<<front>> #2E7D32
+    BackgroundColor<<middle>> #FFF3E0
+    BorderColor<<middle>> #E65100
+    BackgroundColor<<back>> #F3E5F5
+    BorderColor<<back>> #6A1B9A
+    BackgroundColor<<runtime>> #ECEFF1
+    BorderColor<<runtime>> #37474F
+}
+
+title
+Arquitectura General del Sistema - Compilador Multilenguaje
+PigLatin, Y y Zetariano | Compiladores 2 - CUNOC USAC
+end title
+
+' =========================================================================
+' CAPA 1: PRESENTACIÓN Y ENTORNO DE DESARROLLO (UI)
+' =========================================================================
+rectangle "1. Capa de Presentación e Interfaz de Usuario (Swing / FlatLaf)" <<ui>> {
+    rectangle "VentanaPrincipal\n(JFrame - Gestor de Interacción y Eventos)" as UI_Main <<ui>>
+    
+    rectangle "PanelEditorTexto\n(EditorKitPlantilla,\nVistaSintaxis,\nNumeroLinea)" as UI_Editor <<ui>>
+    rectangle "PanelArbolProyecto\n(Explorador de Archivos\ny Módulos .pig, .y, .zeta)" as UI_Tree <<ui>>
+    rectangle "PanelConsola\n(Salida de Compilación,\nLogs y Diagnósticos)" as UI_Console <<ui>>
+    rectangle "Visor AST Graphviz\n(PanelImagenZoom +\nRenderizadorGraphviz)" as UI_Graphviz <<ui>>
+    rectangle "Diálogos de Reportes\n(ModeloTablaSimbolos,\nModeloTablaErrores)" as UI_Reports <<ui>>
+
+    UI_Main o-- UI_Editor
+    UI_Main o-- UI_Tree
+    UI_Main o-- UI_Console
+    UI_Main o-- UI_Graphviz
+    UI_Main o-- UI_Reports
+}
+
+' =========================================================================
+' CAPA 2: ORQUESTADOR Y FRONT-END MULTILENGUAJE
+' =========================================================================
+rectangle "2. Capa Front-End: Ingestión Multilenguaje y Análisis Léxico/Sintáctico (ANTLR4)" <<front>> {
+    rectangle "TareaCompilacion\n(SwingWorker - Hilo Asíncrono en Background)" as TaskWorker <<front>>
+    rectangle "OrquestadorCompilacion\n(Controlador Central del Pipeline Multilenguaje)" as Orchestrator <<front>>
+    rectangle "GestorImports\n(Resolución de Rutas Relativas\ny Detección de Dependencias Circulares)" as ImportMgr <<front>>
+    
+    package "Módulos de Entrada y Parsers ANTLR4" {
+        rectangle "PigLatin Pipeline\n(.pig -> piglatinLexer -> piglatinParser\n-> ConstructorAstPigLatin)" as PipePig <<front>>
+        rectangle "Y Pipeline (Indentación Python-style)\n(.y -> yLexer -> YSangriaToken\n-> yParser -> ConstructorAstY)" as PipeY <<front>>
+        rectangle "Zetariano Pipeline (POO)\n(.zeta -> zetarianoLexer -> zetarianoParser\n-> ConstructorAstZetariano)" as PipeZeta <<front>>
+    }
+
+    rectangle "CustomErrorListener\n(Captura Unificada de Errores Léxicos y Sintácticos)" as ErrorListener <<front>>
+
+    TaskWorker --> Orchestrator : dispara ejecución
+    Orchestrator o-- ImportMgr : gestiona imports
+    ImportMgr ..> PipePig : procesa módulo principal
+    ImportMgr ..> PipeY : procesa módulos Y
+    ImportMgr ..> PipeZeta : procesa módulos Zetariano
+    PipePig ..> ErrorListener : registra errores
+    PipeY ..> ErrorListener : registra errores
+    PipeZeta ..> ErrorListener : registra errores
+}
+
+' =========================================================================
+' CAPA 3: MIDDLE-END: AST COMÚN Y MOTOR SEMÁNTICO
+' =========================================================================
+rectangle "3. Capa Middle-End: AST Común, Tabla de Símbolos y Validación Semántica" <<middle>> {
+    rectangle "Árbol de Sintaxis Abstracta (AST Unificado)\n(Patrón Composite: Interfaz NodoAST)\n- Sentencias: NodoDeclaracion, NodoAsignacion, NodoIf, NodoFuncion, NodoClase...\n- Expresiones: NodoOperacionBinaria, NodoIdentificador, NodoLiteral..." as AST_Model <<middle>>
+    
+    rectangle "Motor Semántico (2 Pasadas)\n- Pasada 1: Firmas Globales (Clases, Structs, Funciones)\n- Pasada 2: Chequeo de Cuerpos, Scopes y Tipos" as SemanticPasses <<middle>>
+
+    package "Entorno Semántico y Tipos" {
+        rectangle "TablaSimbolos\n(Árbol Invertido / Cactus Stack)" as SymTab <<middle>>
+        rectangle "Ambito\n(Ámbitos Locales, Bucles,\nFunciones, Switch)" as ScopeMgr <<middle>>
+        rectangle "ContadorDesplazamiento\n(Asignación de Offsets\nStack y Heap)" as OffsetMgr <<middle>>
+        rectangle "ComprobadorTipos\n(Matrices de Coerción y\nCompatibilidad de Operaciones)" as TypeChecker <<middle>>
+        rectangle "Tipo & TipoBase\n(Primitivos, Arreglos, Clases,\nEstructuras, Funciones)" as TypeSys <<middle>>
+    }
+
+    PipePig --> AST_Model : genera AST
+    PipeY --> AST_Model : genera AST
+    PipeZeta --> AST_Model : genera AST
+
+    AST_Model --> SemanticPasses : valida recursivamente
+    SemanticPasses o-- SymTab
+    SymTab o-- ScopeMgr
+    ScopeMgr o-- OffsetMgr
+    SemanticPasses ..> TypeChecker : verifica
+    TypeChecker ..> TypeSys : compara
+}
+
+' =========================================================================
+' CAPA 4: BACK-END: GENERACIÓN DE C3D
+' =========================================================================
+rectangle "4. Capa Back-End: Linealización y Código de Tres Direcciones (C3D)" <<back>> {
+    rectangle "GeneradorC3D\n- Evaluación Cortocircuito Booleano\n- Aplanamiento de Arreglos N-Dimensionales\n- Manejo de Puntero 'this' y Métodos POO\n- Traducción de Control de Flujo (If, While, For)" as C3DGen <<back>>
+    
+    rectangle "ContenedorC3D\n(Lista Secuencial de Instrucciones)" as C3DContainer <<back>>
+    rectangle "GestorTemporales (t0, t1...) & GestorEtiquetas (L0, L1...)" as TempLabelMgr <<back>>
+    rectangle "Cuarteta\n(operador, arg1, arg2, resultado)" as Quadruple <<back>>
+    rectangle "PlantillaC\n(Generador del Código Fuente C Final Compilable)" as CTemplate <<back>>
+
+    SemanticPasses --> C3DGen : AST validado sin errores
+    C3DGen o-- C3DContainer
+    C3DContainer o-- TempLabelMgr
+    C3DContainer o-- Quadruple
+    C3DContainer --> CTemplate : emite código
+}
+
+' =========================================================================
+' CAPA 5: ENTORNO DE EJECUCIÓN Y MÁQUINA VIRTUAL
+' =========================================================================
+rectangle "5. Capa de Ejecución: Máquina Virtual Abstracta y GCC" <<runtime>> {
+    rectangle "Código C Autónomo (salida.c)\n- Librerías: <stdio.h>, <math.h>\n- Rutina de Soporte: print_str(ptr)" as SourceC <<runtime>>
+    
+    package "Memoria Abstracta Simulada" {
+        rectangle "Stack Lineal\n(double stack[100000])\n- Puntero de Marco: P\n- Retornos, 'this', Params, Locales" as StackMem <<runtime>>
+        rectangle "Heap Lineal\n(double heap[100000])\n- Puntero Dinámico: H\n- Cadenas, Objetos, Arreglos" as HeapMem <<runtime>>
+    }
+
+    rectangle "Compilador Externo GCC\n(gcc -O2 salida.c -o programa_c3d)" as GCC_Comp <<runtime>>
+    rectangle "Binario Nativo Ejecutable\n(Salida por consola del sistema operativo)" as BinOutput <<runtime>>
+
+    CTemplate --> SourceC : genera archivo .c
+    SourceC ..> StackMem : gestiona ejecución
+    SourceC ..> HeapMem : reserva dinámica
+    SourceC --> GCC_Comp : compila
+    GCC_Comp --> BinOutput : ejecuta
+}
+
+' Conexiones de retroalimentación a la UI
+ErrorListener ..> UI_Reports : suministra errores
+SymTab ..> UI_Reports : suministra símbolos
+AST_Model ..> UI_Graphviz : serializa a DOT
+CTemplate ..> UI_Main : entrega código C3D para visualización
+
+@enduml
