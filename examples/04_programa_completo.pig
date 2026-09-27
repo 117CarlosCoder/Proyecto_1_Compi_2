@@ -13,4 +13,6 @@ pt.y = 25;
 calc = novus Calculadora(2);
 resultado = calc.multiplicar(sumar_coords(pt));
 >> resultado;
+>> "Figura:";
+>> describir_codigo_figura(1);
 FINIS;

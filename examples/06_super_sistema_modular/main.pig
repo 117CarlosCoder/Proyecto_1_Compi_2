@@ -71,6 +71,8 @@ potVal = potencia(2, 5);
 factVal = factorial(5);
 >> "Factorial de 5:";
 >> factVal;
+>> "Operacion modo multiplicacion (elegir Y?):";
+>> operar_segun_modo(3, 7, 8);
 
 promVal = promedio_tres(80, 90, 100);
 >> "Promedio de tres notas:";

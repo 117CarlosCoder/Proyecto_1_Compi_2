@@ -8,6 +8,7 @@ esto reporte : ReporteGrupo;
 esto prom1 : numerus 0;
 esto prom2 : numerus 0;
 esto estado1 : textum "";
+esto escala1 : textum "";
 esto tasa : numerus 0;
 
 MAIOR>
@@ -23,11 +24,16 @@ prom2 = alumno2.calcularPromedio();
 estado1 = evaluar_estado(prom1);
 >> "Estado Alumno 1:";
 >> estado1;
+escala1 = clasificar_desempeno(1);
+>> "Desempeno Alumno 1 (elegir Y?):";
+>> escala1;
 
 >> "Promedio Alumno 2:";
 >> prom2;
 >> "Estado Alumno 2:";
 >> evaluar_estado(prom2);
+>> "Desempeno Alumno 2 (elegir Y?):";
+>> clasificar_desempeno(4);
 
 reporte = novus ReporteGrupo();
 reporte.totalAlumnos = 2;

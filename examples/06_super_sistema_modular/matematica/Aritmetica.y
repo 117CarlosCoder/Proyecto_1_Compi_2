@@ -10,3 +10,15 @@ factorial(entero n) -> entero:
         retornar 1
     contrario
         retornar n * factorial(n - 1)
+
+operar_segun_modo(entero modo, entero a, entero b) -> entero:
+    elegir(modo):
+        caso 1:
+            retornar a + b
+        caso 2:
+            retornar a - b
+        caso 3:
+            retornar a * b
+        siempre:
+            retornar 0
+
