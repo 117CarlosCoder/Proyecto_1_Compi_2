@@ -9,15 +9,15 @@ import gramaticas.zetariano.zetarianoParser;
 
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.analisis_semantico.YSangriaToken;
+import org.compi2.ast.ModuloSemantico;
 import org.compi2.ast.NodoAST;
-import org.compi2.ast.sentencias.NodoClase;
-import org.compi2.ast.sentencias.NodoConstructor;
 import org.compi2.ast.sentencias.NodoFuncion;
 import org.compi2.ast.sentencias.NodoPrograma;
 import org.compi2.ast.sentencias.NodoProgramaY;
@@ -28,7 +28,6 @@ import org.compi2.constructores_ast.ConstructorAstY;
 import org.compi2.constructores_ast.ConstructorAstZetariano;
 import org.compi2.errores.CustomErrorListener;
 import org.compi2.errores.ErrorCompilacion;
-import org.compi2.tipos.Tipo;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,27 +39,27 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class OrquestadorCompilacion {
 
-    public ResultadoCompilacion compilarArchivo(File archivoPig) {
-        return compilarArchivo(archivoPig.toPath());
+    public ResultadoCompilacion compilarArchivo(File archivo) {
+        return compilarArchivo(archivo.toPath());
     }
 
-    public ResultadoCompilacion compilarArchivo(Path rutaArchivoPig) {
+    public ResultadoCompilacion compilarArchivo(Path rutaArchivo) {
         List<ErrorCompilacion> errores = new ArrayList<>();
-        Optional<String> contenido = leerContenidoArchivo(rutaArchivoPig, errores);
+        Optional<String> contenido = leerContenidoArchivo(rutaArchivo, errores);
 
         if (contenido.isEmpty()) {
             return resultadoFallido(errores);
         }
 
-        Path dirBase = rutaArchivoPig.toAbsolutePath().getParent();
-        String nombreArchivo = rutaArchivoPig.getFileName().toString();
+        Path dirBase = rutaArchivo.toAbsolutePath().getParent();
+        String nombreArchivo = rutaArchivo.getFileName().toString();
         return compilar(nombreArchivo, contenido.get(), dirBase, null);
     }
 
@@ -68,13 +67,25 @@ public class OrquestadorCompilacion {
         return compilar("principal.pig", codigoPig, null, archivosVirtuales);
     }
 
-    public ResultadoCompilacion compilarEnMemoria(String nombreArchivoPig, String codigoPig,
+    public ResultadoCompilacion compilarEnMemoria(String nombreArchivo, String codigo,
                                                   Map<String, String> archivosVirtuales) {
-        return compilar(nombreArchivoPig, codigoPig, null, archivosVirtuales);
+        return compilar(nombreArchivo, codigo, null, archivosVirtuales);
     }
 
-    public ResultadoCompilacion compilar(String nombrePig, String codigoPig, Path dirBase,
+    public ResultadoCompilacion compilar(String nombre, String codigo, Path dirBase,
                                          Map<String, String> archivosVirtuales) {
+        String nombreNormalizado = (nombre != null) ? nombre.toLowerCase(Locale.ROOT) : "";
+        if (nombreNormalizado.endsWith(".y")) {
+            return compilarModulo(nombre, codigo, TipoLenguaje.Y);
+        }
+        if (nombreNormalizado.endsWith(".z")) {
+            return compilarModulo(nombre, codigo, TipoLenguaje.ZETARIANO);
+        }
+        return compilarPigLatin(nombre, codigo, dirBase, archivosVirtuales);
+    }
+
+    private ResultadoCompilacion compilarPigLatin(String nombrePig, String codigoPig, Path dirBase,
+                                                  Map<String, String> archivosVirtuales) {
 
         List<ErrorCompilacion> errores = new ArrayList<>();
 
@@ -96,7 +107,7 @@ public class OrquestadorCompilacion {
         procesarFase(archivos, tabla, erroresSemanticos, false);
 
         ejecutarConContexto(tabla, erroresSemanticos, "Pig Latin", nombrePig,
-            () -> astPrincipal.registrarFirmas(tabla, erroresSemanticos));
+            () -> astPrincipal.registrarEnTablaSimbolos(tabla, erroresSemanticos));
         ejecutarConContexto(tabla, erroresSemanticos, "Pig Latin", nombrePig,
             () -> astPrincipal.comprobarCuerpos(tabla, erroresSemanticos));
 
@@ -108,6 +119,33 @@ public class OrquestadorCompilacion {
 
         if (exitoso) {
             generarCodigoC3D(resultado, astPrincipal, archivos, tabla);
+        }
+
+        return resultado;
+    }
+
+    private ResultadoCompilacion compilarModulo(String nombreArchivo, String codigo, TipoLenguaje lenguaje) {
+        List<ErrorCompilacion> errores = new ArrayList<>();
+        ArchivoFuente modulo = new ArchivoFuente(nombreArchivo, null, nombreArchivo, lenguaje, codigo);
+        procesarSegunLenguaje(modulo, errores);
+
+        TablaSimbolos tabla = new TablaSimbolos();
+        tabla.setContextoOrigen(lenguaje == TipoLenguaje.Y ? "Y" : "Zetariano", nombreArchivo);
+
+        List<ErrorSemantico> erroresSemanticos = new ArrayList<>();
+        if (modulo.getAst() instanceof ModuloSemantico moduloSemantico) {
+            moduloSemantico.registrarEnTablaSimbolos(tabla, erroresSemanticos);
+            moduloSemantico.comprobarCuerpos(tabla, erroresSemanticos);
+        }
+        etiquetarErroresConArchivo(erroresSemanticos, 0, nombreArchivo);
+
+        errores.addAll(erroresSemanticos);
+        boolean exitoso = errores.isEmpty();
+        ResultadoCompilacion resultado = new ResultadoCompilacion(exitoso, null, Collections.emptyMap(), tabla, errores);
+        resultado.setParseTreePrincipal(modulo.getParseTree());
+
+        if (exitoso) {
+            generarCodigoC3D(resultado, obtenerFuncionesModulo(modulo), Collections.emptyList(), tabla);
         }
 
         return resultado;
@@ -138,13 +176,35 @@ public class OrquestadorCompilacion {
 
     private ParseTree parsearPigLatin(String nombre, String codigo, List<ErrorCompilacion> errores) {
         piglatinLexer lexer = new piglatinLexer(CharStreams.fromString(codigo));
-        configurarListener(lexer::removeErrorListeners, lexer::addErrorListener, nombre, errores);
+        configurarListener(lexer, nombre, errores);
 
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         piglatinParser parser = new piglatinParser(tokens);
-        configurarListener(parser::removeErrorListeners, parser::addErrorListener, nombre, errores);
+        configurarListener(parser, nombre, errores);
 
         return parser.programa();
+    }
+
+    private ParseTree parsearY(String nombre, String codigo, List<ErrorCompilacion> errores) {
+        yLexer lexer = new yLexer(CharStreams.fromString(codigo));
+        configurarListener(lexer, nombre, errores);
+
+        CommonTokenStream tokens = new CommonTokenStream(new YSangriaToken(lexer));
+        yParser parser = new yParser(tokens);
+        configurarListener(parser, nombre, errores);
+
+        return parser.programa();
+    }
+
+    private ParseTree parsearZetariano(String nombre, String codigo, List<ErrorCompilacion> errores) {
+        zetarianoLexer lexer = new zetarianoLexer(CharStreams.fromString(codigo));
+        configurarListener(lexer, nombre, errores);
+
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        zetarianoParser parser = new zetarianoParser(tokens);
+        configurarListener(parser, nombre, errores);
+
+        return parser.unidadCompilacion();
     }
 
     @SuppressWarnings("unchecked")
@@ -160,10 +220,9 @@ public class OrquestadorCompilacion {
         }
     }
 
-    private void configurarListener(Runnable removerListeners, Consumer<CustomErrorListener> agregarListener,
-                                    String nombreArchivo, List<ErrorCompilacion> errores) {
-        removerListeners.run();
-        agregarListener.accept(new CustomErrorListener(nombreArchivo, errores));
+    private void configurarListener(Recognizer<?, ?> recognizer, String nombreArchivo, List<ErrorCompilacion> errores) {
+        recognizer.removeErrorListeners();
+        recognizer.addErrorListener(new CustomErrorListener(nombreArchivo, errores));
     }
 
     private Map<String, ArchivoFuente> procesarImportaciones(NodoPrograma astPrincipal, Path dirBase,
@@ -194,6 +253,9 @@ public class OrquestadorCompilacion {
 
             importsProcesados.add(res.getRutaRelativa());
             procesarSegunLenguaje(archivo, errores);
+            if (archivo.esZetariano() && archivo.getAst() instanceof NodoUnidadCompilacionZ programaZ) {
+                GestorImports.validarNombreClaseZetariano(archivo, programaZ, errores);
+            }
             archivos.put(res.getRutaRelativa(), archivo);
         }
 
@@ -201,72 +263,47 @@ public class OrquestadorCompilacion {
     }
 
     private void procesarSegunLenguaje(ArchivoFuente archivo, List<ErrorCompilacion> errores) {
-        if (archivo.esZetariano()) {
-            procesarArchivoZetariano(archivo, errores);
-        } else if (archivo.esY()) {
-            procesarArchivoY(archivo, errores);
-        }
-    }
-
-    private void procesarArchivoZetariano(ArchivoFuente archivo, List<ErrorCompilacion> errores) {
         String nombre = archivo.getNombreArchivo();
+        String contenido = archivo.getContenido();
 
-        zetarianoLexer lexer = new zetarianoLexer(CharStreams.fromString(archivo.getContenido()));
-        configurarListener(lexer::removeErrorListeners, lexer::addErrorListener, nombre, errores);
+        ParseTree tree;
+        ParseTreeVisitor<?> builder;
+        Class<? extends NodoAST> tipoEsperado;
 
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        zetarianoParser parser = new zetarianoParser(tokens);
-        configurarListener(parser::removeErrorListeners, parser::addErrorListener, nombre, errores);
-
-        ParseTree tree = parser.unidadCompilacion();
-        archivo.setParseTree(tree);
-
-        NodoUnidadCompilacionZ astZ = construirAst(tree, new ConstructorAstZetariano(),
-            NodoUnidadCompilacionZ.class, nombre, errores);
-
-        if (astZ != null) {
-            archivo.setAst(astZ);
-            GestorImports.validarNombreClaseZetariano(archivo, astZ, errores);
+        if (archivo.esY()) {
+            tree = parsearY(nombre, contenido, errores);
+            builder = new ConstructorAstY();
+            tipoEsperado = NodoProgramaY.class;
+        } else if (archivo.esZetariano()) {
+            tree = parsearZetariano(nombre, contenido, errores);
+            builder = new ConstructorAstZetariano();
+            tipoEsperado = NodoUnidadCompilacionZ.class;
+        } else {
+            return;
         }
-    }
 
-    private void procesarArchivoY(ArchivoFuente archivo, List<ErrorCompilacion> errores) {
-        String nombre = archivo.getNombreArchivo();
-
-        yLexer lexer = new yLexer(CharStreams.fromString(archivo.getContenido()));
-        configurarListener(lexer::removeErrorListeners, lexer::addErrorListener, nombre, errores);
-
-        CommonTokenStream tokens = new CommonTokenStream(new YSangriaToken(lexer));
-        yParser parser = new yParser(tokens);
-        configurarListener(parser::removeErrorListeners, parser::addErrorListener, nombre, errores);
-
-        ParseTree tree = parser.programa();
         archivo.setParseTree(tree);
-
-        NodoProgramaY astY = construirAst(tree, new ConstructorAstY(), NodoProgramaY.class, nombre, errores);
-        if (astY != null) {
-            archivo.setAst(astY);
+        NodoAST ast = construirAst(tree, builder, tipoEsperado, nombre, errores);
+        if (ast != null) {
+            archivo.setAst(ast);
         }
     }
 
     private void procesarFase(Map<String, ArchivoFuente> archivos, TablaSimbolos tabla,
-                              List<ErrorSemantico> errores, boolean esRegistroFirmas) {
+                              List<ErrorSemantico> errores, boolean esFaseRegistro) {
+        procesarFaseLenguaje(archivos, tabla, errores, TipoLenguaje.Y, "Y", esFaseRegistro);
+        procesarFaseLenguaje(archivos, tabla, errores, TipoLenguaje.ZETARIANO, "Zetariano", esFaseRegistro);
+    }
 
+    private void procesarFaseLenguaje(Map<String, ArchivoFuente> archivos, TablaSimbolos tabla,
+                                      List<ErrorSemantico> errores, TipoLenguaje lenguaje,
+                                      String contexto, boolean esFaseRegistro) {
         for (ArchivoFuente af : archivos.values()) {
-            if (af.esY() && af.getAst() instanceof NodoProgramaY ny) {
-                Runnable accion = esRegistroFirmas
-                    ? () -> ny.registrarFirmas(tabla, errores)
-                    : () -> ny.comprobarCuerpos(tabla, errores);
-                ejecutarConContexto(tabla, errores, "Y?", af.getNombreArchivo(), accion);
-            }
-        }
-
-        for (ArchivoFuente af : archivos.values()) {
-            if (af.esZetariano() && af.getAst() instanceof NodoUnidadCompilacionZ nz) {
-                Runnable accion = esRegistroFirmas
-                    ? () -> nz.registrarFirmas(tabla, errores)
-                    : () -> nz.comprobarCuerpos(tabla, errores);
-                ejecutarConContexto(tabla, errores, "Zetariano", af.getNombreArchivo(), accion);
+            if (af.getLenguaje() == lenguaje && af.getAst() instanceof ModuloSemantico modulo) {
+                Runnable accion = esFaseRegistro
+                    ? () -> modulo.registrarEnTablaSimbolos(tabla, errores)
+                    : () -> modulo.comprobarCuerpos(tabla, errores);
+                ejecutarConContexto(tabla, errores, contexto, af.getNombreArchivo(), accion);
             }
         }
     }
@@ -288,15 +325,18 @@ public class OrquestadorCompilacion {
         }
     }
 
-
     private void generarCodigoC3D(ResultadoCompilacion resultado, NodoPrograma astPrincipal,
                                   Map<String, ArchivoFuente> archivos, TablaSimbolos tabla) {
 
-        GeneradorC3D genC3D = new GeneradorC3D(tabla);
         List<NodoFuncion> todasLasFunciones = recopilarTodasLasFunciones(archivos);
         List<NodoAST> mainInstrucciones = recopilarInstruccionesPrincipales(astPrincipal);
+        generarCodigoC3D(resultado, todasLasFunciones, mainInstrucciones, tabla);
+    }
 
-        String codigoC3D = genC3D.compilarConFunciones(todasLasFunciones, mainInstrucciones);
+    private void generarCodigoC3D(ResultadoCompilacion resultado, List<NodoFuncion> funciones,
+                                  List<NodoAST> instrucciones, TablaSimbolos tabla) {
+        GeneradorC3D genC3D = new GeneradorC3D(tabla);
+        String codigoC3D = genC3D.compilarConFunciones(funciones, instrucciones);
         resultado.setCodigoC3D(codigoC3D);
         resultado.setContenedorC3D(genC3D.getC3d());
     }
@@ -316,53 +356,27 @@ public class OrquestadorCompilacion {
         List<NodoFuncion> funciones = new ArrayList<>();
 
         for (ArchivoFuente af : archivos.values()) {
-            if (af.esY() && af.getAst() instanceof NodoProgramaY ny && ny.getFunciones() != null) {
-                funciones.addAll(ny.getFunciones());
+            if (af.esY()) {
+                funciones.addAll(obtenerFuncionesModulo(af));
             }
         }
 
         for (ArchivoFuente af : archivos.values()) {
-            if (af.esZetariano() && af.getAst() instanceof NodoUnidadCompilacionZ nz) {
-                funciones.addAll(extraerFuncionesDeClases(nz.getClases()));
+            if (af.esZetariano()) {
+                funciones.addAll(obtenerFuncionesModulo(af));
             }
         }
 
         return funciones;
     }
 
-    private List<NodoFuncion> extraerFuncionesDeClases(List<NodoClase> clases) {
-        List<NodoFuncion> funciones = new ArrayList<>();
-        if (clases == null) return funciones;
-
-        for (NodoClase clase : clases) {
-            agregarMetodos(clase, funciones);
-            agregarConstructoresComoFunciones(clase, funciones);
+    private List<NodoFuncion> obtenerFuncionesModulo(ArchivoFuente modulo) {
+        if (modulo.esY() && modulo.getAst() instanceof NodoProgramaY programaY && programaY.getFunciones() != null) {
+            return programaY.getFunciones();
         }
-        return funciones;
-    }
-
-    private void agregarMetodos(NodoClase clase, List<NodoFuncion> destino) {
-        if (clase.getMetodos() == null) return;
-        for (NodoFuncion metodo : clase.getMetodos()) {
-            metodo.setEsMetodo(true);
-            metodo.setClaseContenedora(clase.getNombre());
-            destino.add(metodo);
+        if (modulo.esZetariano() && modulo.getAst() instanceof NodoUnidadCompilacionZ programaZ) {
+            return programaZ.aFunciones();
         }
-    }
-
-    private void agregarConstructoresComoFunciones(NodoClase clase, List<NodoFuncion> destino) {
-        if (clase.getConstructores() == null) return;
-        for (NodoConstructor constructor : clase.getConstructores()) {
-            NodoFuncion fn = new NodoFuncion(
-                clase.getNombre() + "_constructor",
-                constructor.getParametros(),
-                Tipo.VOID,
-                constructor.getCuerpo(),
-                constructor.getLinea(),
-                constructor.getColumna());
-            fn.setEsMetodo(true);
-            fn.setClaseContenedora(clase.getNombre());
-            destino.add(fn);
-        }
+        return Collections.emptyList();
     }
 }

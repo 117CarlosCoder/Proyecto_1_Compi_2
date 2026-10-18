@@ -33,8 +33,7 @@ public class NodoAccesoMiembro implements NodoAST {
             return Tipo.ERROR;
         }
 
-        Tipo compuesto = tablaSimbolos.buscarTipoCompuesto(tipoEstructura.getNombreTipo());
-        Tipo tipoEfectivo = (compuesto != null) ? compuesto : tipoEstructura;
+        Tipo tipoEfectivo = tablaSimbolos.resolverTipo(tipoEstructura);
         Tipo tipoCampo = tipoEfectivo.buscarCampo(nombreCampo);
         if (tipoCampo == null) {
             errores.add(new ErrorSemantico(

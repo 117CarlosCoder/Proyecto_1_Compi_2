@@ -2,6 +2,7 @@ package org.compi2.ast.sentencias;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
@@ -12,13 +13,15 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class NodoSwitch implements NodoAST {
     private final NodoAST expresionControl;
     private final List<CasoSwitch> casos;
     private final List<NodoAST> casoDefecto;
     private final int linea;
     private final int columna;
+
+    private Tipo tipoControl;
 
     @Getter
     @AllArgsConstructor
@@ -34,7 +37,7 @@ public class NodoSwitch implements NodoAST {
         String ambito = (tablaSimbolos.getAmbitoActual() != null) ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
                 : "Global";
 
-        Tipo tipoControl = expresionControl.comprobar(tablaSimbolos, errores);
+        this.tipoControl = expresionControl.comprobar(tablaSimbolos, errores);
 
         tablaSimbolos.abrirAmbitoSwitch("Bloque_Switch");
         try {

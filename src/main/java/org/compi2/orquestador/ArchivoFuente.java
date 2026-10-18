@@ -44,10 +44,6 @@ public class ArchivoFuente {
         return lenguaje == TipoLenguaje.Y;
     }
 
-    public boolean esPigLatin() {
-        return lenguaje == TipoLenguaje.PIG_LATIN;
-    }
-
     public static String normalizarSeparadores(String ruta) {
         if (ruta == null) return "";
         return ruta.replace('\\', '/').trim();

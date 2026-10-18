@@ -1,7 +1,7 @@
 package org.compi2.ast.expresiones;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
@@ -12,7 +12,7 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class NodoOperacionBinaria implements NodoAST {
     private final NodoAST izq;
     private final String operador;
@@ -20,10 +20,13 @@ public class NodoOperacionBinaria implements NodoAST {
     private final int linea;
     private final int columna;
 
+    private Tipo tipoIzq;
+    private Tipo tipoDer;
+
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        Tipo tipoIzq = izq.comprobar(tablaSimbolos, errores);
-        Tipo tipoDer = der.comprobar(tablaSimbolos, errores);
+        this.tipoIzq = izq.comprobar(tablaSimbolos, errores);
+        this.tipoDer = der.comprobar(tablaSimbolos, errores);
 
         Tipo res = switch (operador) {
             case "+" -> ComprobadorTipos.resolverSuma(tipoIzq, tipoDer);

@@ -123,11 +123,6 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstDefinicionEstructura(yParser.InstDefinicionEstructuraContext ctx) {
-        return visit(ctx.definicionEstructura());
-    }
-
-    @Override
     public NodoAST visitInstDeclaracion(yParser.InstDeclaracionContext ctx) {
         return visit(ctx.declaracionVariable());
     }
@@ -169,32 +164,12 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitValorExpresion(yParser.ValorExpresionContext ctx) {
-        return visit(ctx.expresion());
-    }
-
-    @Override
-    public NodoAST visitValorLista(yParser.ValorListaContext ctx) {
-        return visit(ctx.listaLiteral());
-    }
-
-    @Override
     public NodoAST visitListaLiteral(yParser.ListaLiteralContext ctx) {
         List<NodoAST> valores = new ArrayList<>();
         for (yParser.ElementoListaContext elem : ctx.elementoLista()) {
             valores.add(visit(elem));
         }
         return new NodoListaValores(valores, ctx.LLAVE_IZQ().getSymbol().getLine(), ctx.LLAVE_IZQ().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitElementoExpresion(yParser.ElementoExpresionContext ctx) {
-        return visit(ctx.expresion());
-    }
-
-    @Override
-    public NodoAST visitElementoAnidado(yParser.ElementoAnidadoContext ctx) {
-        return visit(ctx.listaLiteral());
     }
 
     @Override
@@ -256,11 +231,6 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstSi(yParser.InstSiContext ctx) {
-        return visit(ctx.condicionalSi());
-    }
-
-    @Override
     public NodoAST visitCondicionalSi(yParser.CondicionalSiContext ctx) {
         List<yParser.BloqueContext> bloques = ctx.bloque();
         List<yParser.ExpresionContext> expresiones = ctx.expresion();
@@ -293,11 +263,6 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
         }
 
         return nodoActual;
-    }
-
-    @Override
-    public NodoAST visitInstElegir(yParser.InstElegirContext ctx) {
-        return visit(ctx.seleccionElegir());
     }
 
     @Override
@@ -383,11 +348,6 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstPara(yParser.InstParaContext ctx) {
-        return visit(ctx.cicloPara());
-    }
-
-    @Override
     public NodoAST visitCicloPara(yParser.CicloParaContext ctx) {
         NodoAST init = ctx.paraInicio() != null ? visit(ctx.paraInicio()) : null;
         NodoAST cond = ctx.expresion() != null ? visit(ctx.expresion()) : null;
@@ -397,24 +357,9 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitParaInicioDeclaracion(yParser.ParaInicioDeclaracionContext ctx) {
-        return visit(ctx.declaracionVariable());
-    }
-
-    @Override
-    public NodoAST visitParaInicioAsignacion(yParser.ParaInicioAsignacionContext ctx) {
-        return visit(ctx.asignacion());
-    }
-
-    @Override
     public NodoAST visitParaPaso(yParser.ParaPasoContext ctx) {
         if (ctx.asignacion() != null) return visit(ctx.asignacion());
         return visit(ctx.incrementoDecremento());
-    }
-
-    @Override
-    public NodoAST visitInstMientras(yParser.InstMientrasContext ctx) {
-        return visit(ctx.cicloMientras());
     }
 
     @Override
@@ -422,11 +367,6 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
         NodoAST cond = visit(ctx.expresion());
         List<NodoAST> cuerpo = obtenerInstruccionesBloque(ctx.bloque());
         return new NodoWhile(cond, cuerpo, ctx.MIENTRAS().getSymbol().getLine(), ctx.MIENTRAS().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitInstHacer(yParser.InstHacerContext ctx) {
-        return visit(ctx.cicloHacer());
     }
 
     @Override
@@ -438,44 +378,32 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
 
     @Override
     public NodoAST visitExprMultiplicativa(yParser.ExprMultiplicativaContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprAditiva(yParser.ExprAditivaContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprRelacional(yParser.ExprRelacionalContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprIgualdad(yParser.ExprIgualdadContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprConjuncion(yParser.ExprConjuncionContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, "&&", der, ctx.Y_LOGICO().getSymbol().getLine(), ctx.Y_LOGICO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), "&&", ctx.Y_LOGICO().getSymbol(), visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprDisyuncion(yParser.ExprDisyuncionContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, "||", der, ctx.O_LOGICO().getSymbol().getLine(), ctx.O_LOGICO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), "||", ctx.O_LOGICO().getSymbol(), visit(ctx.expresion(1)));
     }
 
     @Override
@@ -492,11 +420,6 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
     @Override
     public NodoAST visitExprLeer(yParser.ExprLeerContext ctx) {
         return new NodoExpresionLectura(ctx.LEER().getSymbol().getLine(), ctx.LEER().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitExprAcceso(yParser.ExprAccesoContext ctx) {
-        return visit(ctx.acceso());
     }
 
     @Override
@@ -545,33 +468,23 @@ public class ConstructorAstY extends yBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitExprLiteral(yParser.ExprLiteralContext ctx) {
-        return visit(ctx.literal());
-    }
-
-    @Override
     public NodoAST visitLitEntero(yParser.LitEnteroContext ctx) {
-        int val = Integer.parseInt(ctx.LIT_ENTERO().getText());
-        return new NodoLiteral(val, ctx.LIT_ENTERO().getSymbol().getLine(), ctx.LIT_ENTERO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalEntero(ctx.LIT_ENTERO());
     }
 
     @Override
     public NodoAST visitLitDecimal(yParser.LitDecimalContext ctx) {
-        double val = Double.parseDouble(ctx.LIT_DECIMAL().getText());
-        return new NodoLiteral(val, ctx.LIT_DECIMAL().getSymbol().getLine(), ctx.LIT_DECIMAL().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalDecimal(ctx.LIT_DECIMAL());
     }
 
     @Override
     public NodoAST visitLitCadena(yParser.LitCadenaContext ctx) {
-        String raw = ctx.LIT_CADENA().getText();
-        String str = raw.substring(1, raw.length() - 1);
-        return new NodoLiteral(str, ctx.LIT_CADENA().getSymbol().getLine(), ctx.LIT_CADENA().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalCadena(ctx.LIT_CADENA());
     }
 
     @Override
     public NodoAST visitLitCaracter(yParser.LitCaracterContext ctx) {
-        char ch = ctx.LIT_CARACTER().getText().charAt(1);
-        return new NodoLiteral(ch, ctx.LIT_CARACTER().getSymbol().getLine(), ctx.LIT_CARACTER().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalCaracter(ctx.LIT_CARACTER());
     }
 
     @Override

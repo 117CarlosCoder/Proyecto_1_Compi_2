@@ -1,6 +1,7 @@
 package org.compi2.ast.sentencias;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
@@ -9,8 +10,6 @@ import org.compi2.tipos.TipoBase;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
@@ -22,11 +21,11 @@ public class NodoClase implements NodoAST {
     private final int linea;
     private final int columna;
 
-    private boolean firmasRegistradas = false;
+    private boolean claseRegistrada = false;
     private Tipo tipoClaseCache;
 
-    public Tipo registrarFirmas(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        if (firmasRegistradas && tipoClaseCache != null && tablaSimbolos.existeTipoCompuesto(nombre)) {
+    public Tipo registrarEnTablaSimbolos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
+        if (claseRegistrada && tipoClaseCache != null && tablaSimbolos.existeTipoCompuesto(nombre)) {
             return tipoClaseCache;
         }
 
@@ -40,26 +39,13 @@ public class NodoClase implements NodoAST {
 
         if (constructores != null) {
             for (NodoConstructor c : constructores) {
-                List<Tipo> params = new ArrayList<>();
-                if (c.getParametros() != null) {
-                    for (Parametro p : c.getParametros()) {
-                        params.add(p.getTipo());
-                    }
-                }
-                tipoClaseCache.agregarConstructor(params);
+                tipoClaseCache.agregarConstructor(obtenerTiposParametros(c.getParametros()));
             }
         }
 
         if (metodos != null) {
             for (NodoFuncion m : metodos) {
-                List<Tipo> params = new ArrayList<>();
-                if (m.getParametros() != null) {
-                    for (Parametro p : m.getParametros()) {
-                        params.add(p.getTipo());
-                    }
-                }
-                Tipo tipoMetodo = new Tipo(m.getNombre(), params, m.getTipoRetorno() != null ? m.getTipoRetorno() : Tipo.VOID);
-                tipoClaseCache.agregarMetodo(m.getNombre(), tipoMetodo);
+                tipoClaseCache.agregarMetodo(m.getNombre(), crearTipoMetodo(m));
             }
         }
 
@@ -80,20 +66,28 @@ public class NodoClase implements NodoAST {
 
             if (metodos != null) {
                 for (NodoFuncion m : metodos) {
-                    List<Tipo> params = new ArrayList<>();
-                    if (m.getParametros() != null) {
-                        for (Parametro p : m.getParametros()) {
-                            params.add(p.getTipo());
-                        }
-                    }
-                    Tipo tipoMetodo = new Tipo(m.getNombre(), params, m.getTipoRetorno() != null ? m.getTipoRetorno() : Tipo.VOID);
-                    tablaSimbolos.registrarMetodoClase(nombre, m.getNombre(), tipoMetodo, m.getLinea(), m.getColumna());
+                    tablaSimbolos.registrarMetodoClase(nombre, m.getNombre(), crearTipoMetodo(m), m.getLinea(), m.getColumna());
                 }
             }
         }
 
-        firmasRegistradas = true;
+        claseRegistrada = true;
         return tipoClaseCache;
+    }
+
+    private List<Tipo> obtenerTiposParametros(List<Parametro> parametros) {
+        List<Tipo> tipos = new ArrayList<>();
+        if (parametros != null) {
+            for (Parametro p : parametros) {
+                tipos.add(p.getTipo());
+            }
+        }
+        return tipos;
+    }
+
+    private Tipo crearTipoMetodo(NodoFuncion m) {
+        Tipo retorno = m.getTipoRetorno() != null ? m.getTipoRetorno() : Tipo.VOID;
+        return new Tipo(m.getNombre(), obtenerTiposParametros(m.getParametros()), retorno);
     }
 
     public void comprobarCuerpos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
@@ -128,9 +122,35 @@ public class NodoClase implements NodoAST {
         }
     }
 
+    public List<NodoFuncion> aFunciones() {
+        List<NodoFuncion> funciones = new ArrayList<>();
+        if (metodos != null) {
+            for (NodoFuncion metodo : metodos) {
+                metodo.setEsMetodo(true);
+                metodo.setClaseContenedora(nombre);
+                funciones.add(metodo);
+            }
+        }
+        if (constructores != null) {
+            for (NodoConstructor constructor : constructores) {
+                NodoFuncion fn = new NodoFuncion(
+                    nombre + "_constructor",
+                    constructor.getParametros(),
+                    Tipo.VOID,
+                    constructor.getCuerpo(),
+                    constructor.getLinea(),
+                    constructor.getColumna());
+                fn.setEsMetodo(true);
+                fn.setClaseContenedora(nombre);
+                funciones.add(fn);
+            }
+        }
+        return funciones;
+    }
+
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        Tipo tipo = registrarFirmas(tablaSimbolos, errores);
+        Tipo tipo = registrarEnTablaSimbolos(tablaSimbolos, errores);
         comprobarCuerpos(tablaSimbolos, errores);
         return tipo;
     }

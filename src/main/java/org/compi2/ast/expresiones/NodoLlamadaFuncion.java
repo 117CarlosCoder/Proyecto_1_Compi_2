@@ -1,7 +1,7 @@
 package org.compi2.ast.expresiones;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.Simbolo;
@@ -15,31 +15,35 @@ import java.util.Collections;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class NodoLlamadaFuncion implements NodoAST {
     private final String nombreFuncion;
     private final List<NodoAST> argumentos;
     private final int linea;
     private final int columna;
 
+    private boolean esMetodoDeClaseActual;
+    private String claseObjetivoResuelta;
+    private Tipo funcionResuelta;
+
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        Simbolo simboloFuncion = tablaSimbolos.buscarFuncionGlobal(nombreFuncion);
-        Tipo tipoFuncion = (simboloFuncion != null) ? simboloFuncion.getTipo() : null;
-        if (tipoFuncion == null) {
-            Simbolo sThis = tablaSimbolos.buscarSimbolo("this");
-            if (sThis != null && sThis.getTipo() != null) {
-                Tipo tClase = tablaSimbolos.buscarTipoCompuesto(sThis.getTipo().getNombreTipo());
-                if (tClase != null) {
-                    tipoFuncion = tClase.buscarMetodo(nombreFuncion);
-                }
-            }
-        }
+        this.esMetodoDeClaseActual = false;
+        this.claseObjetivoResuelta = null;
+        this.funcionResuelta = null;
 
-        if (tipoFuncion == null) {
-            String ambito = (tablaSimbolos.getAmbitoActual() != null)
-                    ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
-                    : "Global";
+        String ambito = (tablaSimbolos.getAmbitoActual() != null)
+                ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
+                : "Global";
+
+        Simbolo simboloFuncion = tablaSimbolos.buscarFuncionGlobal(nombreFuncion);
+        Simbolo sThis = tablaSimbolos.buscarSimbolo("this");
+        Tipo tClase = (sThis != null && sThis.getTipo() != null)
+                ? tablaSimbolos.buscarTipoCompuesto(sThis.getTipo().getNombreTipo())
+                : null;
+        boolean esMetodoThis = (tClase != null && tClase.existeMetodo(nombreFuncion));
+
+        if (simboloFuncion == null && !esMetodoThis) {
             errores.add(new ErrorSemantico(
                 "La función o método '" + nombreFuncion + "' no ha sido definida.",
                 ambito, linea, columna));
@@ -53,15 +57,32 @@ public class NodoLlamadaFuncion implements NodoAST {
             }
         }
 
+        Tipo tipoFuncion;
+        if (simboloFuncion != null) {
+            tipoFuncion = simboloFuncion.getTipo();
+            this.esMetodoDeClaseActual = false;
+            this.claseObjetivoResuelta = null;
+            this.funcionResuelta = tipoFuncion;
+        } else {
+            tipoFuncion = tClase.buscarMetodo(nombreFuncion, tiposArgs);
+            if (tipoFuncion == null) {
+                errores.add(new ErrorSemantico(
+                    String.format("No existe una sobrecarga del método '%s' en la clase '%s' que coincida con los argumentos: %s.",
+                        nombreFuncion, tClase.getNombreTipo(), tiposArgs),
+                    ambito, linea, columna));
+                return Tipo.ERROR;
+            }
+            this.esMetodoDeClaseActual = true;
+            this.claseObjetivoResuelta = tClase.getNombreTipo();
+            this.funcionResuelta = tipoFuncion;
+        }
+
         List<Tipo> parametrosEsperados = tipoFuncion.getParametros();
         if (parametrosEsperados == null) {
             parametrosEsperados = Collections.emptyList();
         }
 
         if (parametrosEsperados.size() != tiposArgs.size()) {
-            String ambito = (tablaSimbolos.getAmbitoActual() != null)
-                    ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
-                    : "Global";
             errores.add(new ErrorSemantico(
                 String.format("Cantidad de argumentos inválida para '%s'. Se esperaban %d pero se recibieron %d.",
                     nombreFuncion, parametrosEsperados.size(), tiposArgs.size()),
@@ -74,9 +95,6 @@ public class NodoLlamadaFuncion implements NodoAST {
             Tipo actual = tiposArgs.get(i);
 
             if (actual.getBase() != TipoBase.ERROR && !ComprobadorTipos.esCompatibleAsignacion(esperado, actual)) {
-                String ambito = (tablaSimbolos.getAmbitoActual() != null)
-                        ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
-                        : "Global";
                 errores.add(new ErrorSemantico(
                     String.format("Argumento %d incompatible en '%s': se esperaba %s y se recibió %s.",
                         i + 1, nombreFuncion, esperado, actual),

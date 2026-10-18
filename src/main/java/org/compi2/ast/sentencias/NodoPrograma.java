@@ -1,8 +1,10 @@
 package org.compi2.ast.sentencias;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
+import org.compi2.ast.ModuloSemantico;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
 
@@ -10,10 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-public class NodoPrograma implements NodoAST {
+public class NodoPrograma implements ModuloSemantico {
 
     @Getter
-    @lombok.AllArgsConstructor
+    @AllArgsConstructor
     public static class InfoImport {
         private final String ruta;
         private final int linea;
@@ -38,7 +40,8 @@ public class NodoPrograma implements NodoAST {
         instruccionesMaior.add(inst);
     }
 
-    public void registrarFirmas(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
+    @Override
+    public void registrarEnTablaSimbolos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         for (NodoAST decl : declaracionesGlobales) {
             if (decl != null) {
                 decl.comprobar(tablaSimbolos, errores);
@@ -46,6 +49,7 @@ public class NodoPrograma implements NodoAST {
         }
     }
 
+    @Override
     public void comprobarCuerpos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         tablaSimbolos.abrirAmbito("MAIOR", true);
         try {
@@ -61,7 +65,7 @@ public class NodoPrograma implements NodoAST {
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        registrarFirmas(tablaSimbolos, errores);
+        registrarEnTablaSimbolos(tablaSimbolos, errores);
         comprobarCuerpos(tablaSimbolos, errores);
         return Tipo.VOID;
     }

@@ -19,7 +19,7 @@ public class NodoEstructura implements NodoAST {
     private final int linea;
     private final int columna;
 
-    private boolean firmaRegistrada = false;
+    private boolean registradoEnTabla = false;
     private Tipo tipoEstructuraCache;
 
     public NodoEstructura(String nombre, Map<String, Tipo> campos, int linea, int columna) {
@@ -33,11 +33,11 @@ public class NodoEstructura implements NodoAST {
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        return registrarFirma(tablaSimbolos, errores);
+        return registrarEnTablaSimbolos(tablaSimbolos, errores);
     }
 
-    public Tipo registrarFirma(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        if (firmaRegistrada && tipoEstructuraCache != null && tablaSimbolos.existeTipoCompuesto(nombre)) {
+    public Tipo registrarEnTablaSimbolos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
+        if (registradoEnTabla && tipoEstructuraCache != null && tablaSimbolos.existeTipoCompuesto(nombre)) {
             return tipoEstructuraCache;
         }
 
@@ -65,7 +65,7 @@ public class NodoEstructura implements NodoAST {
             }
         }
 
-        firmaRegistrada = true;
+        registradoEnTabla = true;
         return tipoEstructuraCache;
     }
 }

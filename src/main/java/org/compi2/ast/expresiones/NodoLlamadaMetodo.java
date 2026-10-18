@@ -1,7 +1,7 @@
 package org.compi2.ast.expresiones;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class NodoLlamadaMetodo implements NodoAST {
     private final NodoAST estructura;
     private final String nombreMetodo;
@@ -20,8 +20,14 @@ public class NodoLlamadaMetodo implements NodoAST {
     private final int linea;
     private final int columna;
 
+    private String claseObjetivoResuelta;
+    private Tipo metodoResuelto;
+
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
+        this.claseObjetivoResuelta = null;
+        this.metodoResuelto = null;
+
         Tipo tipoEstructura = estructura.comprobar(tablaSimbolos, errores);
         if (tipoEstructura.getBase() == TipoBase.ERROR)
             return Tipo.ERROR;
@@ -29,8 +35,7 @@ public class NodoLlamadaMetodo implements NodoAST {
         String ambito = (tablaSimbolos.getAmbitoActual() != null) ? tablaSimbolos.getAmbitoActual().getNombreAmbito()
                 : "Global";
 
-        Tipo compuesto = tablaSimbolos.buscarTipoCompuesto(tipoEstructura.getNombreTipo());
-        Tipo tipoEfectivo = (compuesto != null) ? compuesto : tipoEstructura;
+        Tipo tipoEfectivo = tablaSimbolos.resolverTipo(tipoEstructura);
 
         if (tipoEfectivo.getBase() != TipoBase.OBJETO_CLASE) {
             errores.add(new ErrorSemantico(
@@ -63,6 +68,9 @@ public class NodoLlamadaMetodo implements NodoAST {
                     ambito, linea, columna));
             return Tipo.ERROR;
         }
+
+        this.claseObjetivoResuelta = tipoEfectivo.getNombreTipo();
+        this.metodoResuelto = metodo;
 
         return (metodo.getTipoRetorno() != null) ? metodo.getTipoRetorno() : Tipo.VOID;
     }

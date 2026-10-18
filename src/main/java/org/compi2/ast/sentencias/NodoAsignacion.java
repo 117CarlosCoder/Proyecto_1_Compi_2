@@ -6,6 +6,7 @@ import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
+import org.compi2.ast.expresiones.NodoExpresionLectura;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
 
@@ -38,6 +39,9 @@ public class NodoAsignacion implements NodoAST {
             }
         }
 
+        if (valor instanceof NodoExpresionLectura lectura) {
+            lectura.aplicarTipoEsperado(tipoDestino);
+        }
         Tipo tipoValor = valor.comprobar(tablaSimbolos, errores);
         if (tipoValor.getBase() == TipoBase.ERROR) {
             return Tipo.VOID;

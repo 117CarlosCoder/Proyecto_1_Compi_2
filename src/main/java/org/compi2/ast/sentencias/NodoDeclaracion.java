@@ -9,6 +9,7 @@ import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
 
+import org.compi2.ast.expresiones.NodoExpresionLectura;
 import org.compi2.ast.expresiones.NodoListaValores;
 import java.util.Collections;
 import java.util.List;
@@ -91,6 +92,9 @@ public class NodoDeclaracion implements NodoAST {
                     }
                 }
             } else {
+                if (valorInicial instanceof NodoExpresionLectura lectura) {
+                    lectura.aplicarTipoEsperado(tipoFinal);
+                }
                 Tipo tipoVal = valorInicial.comprobar(tablaSimbolos, errores);
                 if (tipoVal.getBase() != TipoBase.ERROR
                         && !ComprobadorTipos.esCompatibleAsignacion(tipoFinal, tipoVal)) {

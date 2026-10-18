@@ -1,18 +1,17 @@
 package org.compi2.ast.sentencias;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.Simbolo;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
+import org.compi2.tipos.TipoBase;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
@@ -24,15 +23,15 @@ public class NodoFuncion implements NodoAST {
     private final int linea;
     private final int columna;
 
-    private boolean firmaRegistrada = false;
+    private boolean registradoEnTabla = false;
     private Tipo tipoFuncionCache;
     @Setter
     private boolean esMetodo = false;
     @Setter
     private String claseContenedora;
 
-    public Tipo registrarFirma(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        if (firmaRegistrada && tipoFuncionCache != null && tablaSimbolos.buscarFuncionGlobal(nombre) != null) {
+    public Tipo registrarEnTablaSimbolos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
+        if (registradoEnTabla && tipoFuncionCache != null && tablaSimbolos.buscarFuncionGlobal(nombre) != null) {
             return tipoFuncionCache;
         }
         List<Tipo> tiposParams = new ArrayList<>();
@@ -52,7 +51,7 @@ public class NodoFuncion implements NodoAST {
                 ));
             }
         }
-        firmaRegistrada = true;
+        registradoEnTabla = true;
         return tipoFuncionCache;
     }
 
@@ -62,11 +61,8 @@ public class NodoFuncion implements NodoAST {
             if (parametros != null) {
                 for (Parametro p : parametros) {
                     Tipo tipoParam = p.getTipo();
-                    if (tipoParam != null && (tipoParam.getBase() == org.compi2.tipos.TipoBase.ESTRUCTURA || tipoParam.getBase() == org.compi2.tipos.TipoBase.OBJETO_CLASE)) {
-                        Tipo compuesto = tablaSimbolos.buscarTipoCompuesto(tipoParam.getNombreTipo());
-                        if (compuesto != null) {
-                            tipoParam = compuesto;
-                        }
+                    if (tipoParam != null && (tipoParam.getBase() == TipoBase.ESTRUCTURA || tipoParam.getBase() == TipoBase.OBJETO_CLASE)) {
+                        tipoParam = tablaSimbolos.resolverTipo(tipoParam);
                     }
                     Simbolo sp = tablaSimbolos.registrarSimbolo(p.getNombre(), tipoParam, "parametro", p.getLinea(), p.getColumna());
                     if (sp == null) {
@@ -92,7 +88,7 @@ public class NodoFuncion implements NodoAST {
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        Tipo tf = registrarFirma(tablaSimbolos, errores);
+        Tipo tf = registrarEnTablaSimbolos(tablaSimbolos, errores);
         comprobarCuerpo(tablaSimbolos, errores);
         return tf;
     }

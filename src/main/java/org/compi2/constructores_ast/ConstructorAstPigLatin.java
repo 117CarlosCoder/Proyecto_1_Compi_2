@@ -128,17 +128,7 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
         return Tipo.ERROR;
     }
 
-    // --- Instrucciones ---
 
-    @Override
-    public NodoAST visitInstDeclaracionVariable(piglatinParser.InstDeclaracionVariableContext ctx) {
-        return visit(ctx.declaracionVariable());
-    }
-
-    @Override
-    public NodoAST visitInstDeclaracionArreglo(piglatinParser.InstDeclaracionArregloContext ctx) {
-        return visit(ctx.declaracionArreglo());
-    }
 
     @Override
     public NodoAST visitInstAsignacion(piglatinParser.InstAsignacionContext ctx) {
@@ -153,37 +143,12 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitValorExpresion(piglatinParser.ValorExpresionContext ctx) {
-        return visit(ctx.expresion());
-    }
-
-    @Override
-    public NodoAST visitValorLista(piglatinParser.ValorListaContext ctx) {
-        return visit(ctx.listaValores());
-    }
-
-    @Override
     public NodoAST visitListaValores(piglatinParser.ListaValoresContext ctx) {
         List<NodoAST> valores = new ArrayList<>();
         for (piglatinParser.ElementoListaContext elem : ctx.elementoLista()) {
             valores.add(visit(elem));
         }
         return new NodoListaValores(valores, ctx.LLAVE_IZQ().getSymbol().getLine(), ctx.LLAVE_IZQ().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitElementoExpresion(piglatinParser.ElementoExpresionContext ctx) {
-        return visit(ctx.expresion());
-    }
-
-    @Override
-    public NodoAST visitElementoAnidado(piglatinParser.ElementoAnidadoContext ctx) {
-        return visit(ctx.listaValores());
-    }
-
-    @Override
-    public NodoAST visitInstImpresion(piglatinParser.InstImpresionContext ctx) {
-        return visit(ctx.impresion());
     }
 
     @Override
@@ -196,11 +161,6 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstLectura(piglatinParser.InstLecturaContext ctx) {
-        return visit(ctx.lectura());
-    }
-
-    @Override
     public NodoAST visitLectura(piglatinParser.LecturaContext ctx) {
         NodoAST destino = ctx.ID() != null ? new NodoIdentificador(
             ctx.ID().getText(), ctx.ID().getSymbol().getLine(), ctx.ID().getSymbol().getCharPositionInLine()
@@ -209,17 +169,10 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstCondicionalSi(piglatinParser.InstCondicionalSiContext ctx) {
-        return visit(ctx.condicionalSi());
-    }
-
-    @Override
     public NodoAST visitCondicionalSi(piglatinParser.CondicionalSiContext ctx) {
-        // En Pig Latin: si (exp) { ... } (aliter (exp)? { ... })* finis;
         List<piglatinParser.BloqueContext> bloques = ctx.bloque();
         List<piglatinParser.ExpresionContext> expresiones = ctx.expresion();
 
-        // Construir desde el último aliter hacia atrás
         NodoAST nodoFinal = null;
         int expIdx = expresiones.size() - 1;
 
@@ -234,12 +187,8 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
                 }
                 return new NodoIf(cond, cuerpoBloque, aliterList, ctx.SI().getSymbol().getLine(), ctx.SI().getSymbol().getCharPositionInLine());
             } else {
-                // Bloques aliter
-                // Verificamos si este bloque aliter tiene condición o es aliter puro
-                // En la gramática: si tiene n bloques, b=0 es si, b=1..n-1 son aliter.
-                // Si hay el mismo número de expresiones que bloques, todos tienen condición excepto el último si expresiones.size() < bloques.size()
+
                 if (b < bloques.size() - 1 || expresiones.size() == bloques.size()) {
-                    // aliter con condición (else if)
                     NodoAST cond = visit(expresiones.get(expIdx--));
                     List<NodoAST> aliterList = new ArrayList<>();
                     if (nodoFinal != null) {
@@ -247,8 +196,6 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
                     }
                     nodoFinal = new NodoIf(cond, cuerpoBloque, aliterList, bloques.get(b).getStart().getLine(), bloques.get(b).getStart().getCharPositionInLine());
                 } else {
-                    // aliter puro sin condición (else)
-                    // Envolvemos las instrucciones en un bloque o contenedor
                     nodoFinal = new NodoIf(
                         new NodoLiteral(true, bloques.get(b).getStart().getLine(), bloques.get(b).getStart().getCharPositionInLine()),
                         cuerpoBloque,
@@ -275,11 +222,6 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstCicloDum(piglatinParser.InstCicloDumContext ctx) {
-        return visit(ctx.cicloDum());
-    }
-
-    @Override
     public NodoAST visitCicloDum(piglatinParser.CicloDumContext ctx) {
         NodoAST cond = visit(ctx.expresion());
         List<NodoAST> cuerpo = obtenerInstruccionesBloque(ctx.bloque());
@@ -287,20 +229,10 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstCicloFacere(piglatinParser.InstCicloFacereContext ctx) {
-        return visit(ctx.cicloFacere());
-    }
-
-    @Override
     public NodoAST visitCicloFacere(piglatinParser.CicloFacereContext ctx) {
         List<NodoAST> cuerpo = obtenerInstruccionesBloque(ctx.bloque());
         NodoAST cond = visit(ctx.expresion());
         return new NodoDoWhile(cond, cuerpo, ctx.FACERE().getSymbol().getLine(), ctx.FACERE().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitInstCicloPer(piglatinParser.InstCicloPerContext ctx) {
-        return visit(ctx.cicloPer());
     }
 
     @Override
@@ -362,9 +294,6 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
         int c = ctx.INCREMENTO() != null ? ctx.INCREMENTO().getSymbol().getCharPositionInLine() : ctx.DECREMENTO().getSymbol().getCharPositionInLine();
         return new NodoOperacionUnaria(op, exp, l, c);
     }
-
-    // --- Expresiones ---
-
     @Override
     public NodoAST visitExprNovus(piglatinParser.ExprNovusContext ctx) {
         String clase = ctx.ID().getText();
@@ -379,44 +308,32 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
 
     @Override
     public NodoAST visitExprMultiplicativa(piglatinParser.ExprMultiplicativaContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprAditiva(piglatinParser.ExprAditivaContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprRelacional(piglatinParser.ExprRelacionalContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprIgualdad(piglatinParser.ExprIgualdadContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprConjuncion(piglatinParser.ExprConjuncionContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, "&&", der, ctx.Y_LOGICO().getSymbol().getLine(), ctx.Y_LOGICO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), "&&", ctx.Y_LOGICO().getSymbol(), visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprDisyuncion(piglatinParser.ExprDisyuncionContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, "||", der, ctx.O_LOGICO().getSymbol().getLine(), ctx.O_LOGICO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), "||", ctx.O_LOGICO().getSymbol(), visit(ctx.expresion(1)));
     }
 
     @Override
@@ -428,11 +345,6 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     @Override
     public NodoAST visitExprParentesis(piglatinParser.ExprParentesisContext ctx) {
         return visit(ctx.expresion());
-    }
-
-    @Override
-    public NodoAST visitExprEncadenado(piglatinParser.ExprEncadenadoContext ctx) {
-        return visit(ctx.encadenado());
     }
 
     @Override
@@ -485,38 +397,23 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitExprLiteral(piglatinParser.ExprLiteralContext ctx) {
-        return visit(ctx.literal());
-    }
-
-    @Override
     public NodoAST visitLitEntero(piglatinParser.LitEnteroContext ctx) {
-        int val = Integer.parseInt(ctx.LIT_ENTERO().getText());
-        return new NodoLiteral(val, ctx.LIT_ENTERO().getSymbol().getLine(), ctx.LIT_ENTERO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalEntero(ctx.LIT_ENTERO());
     }
 
     @Override
     public NodoAST visitLitDecimal(piglatinParser.LitDecimalContext ctx) {
-        double val = Double.parseDouble(ctx.LIT_DECIMAL().getText());
-        return new NodoLiteral(val, ctx.LIT_DECIMAL().getSymbol().getLine(), ctx.LIT_DECIMAL().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalDecimal(ctx.LIT_DECIMAL());
     }
 
     @Override
     public NodoAST visitLitCadena(piglatinParser.LitCadenaContext ctx) {
-        String raw = ctx.LIT_CADENA().getText();
-        String str = raw.substring(1, raw.length() - 1);
-        return new NodoLiteral(str, ctx.LIT_CADENA().getSymbol().getLine(), ctx.LIT_CADENA().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalCadena(ctx.LIT_CADENA());
     }
 
     @Override
     public NodoAST visitLitCaracter(piglatinParser.LitCaracterContext ctx) {
-        char ch = ctx.LIT_CARACTER().getText().charAt(1);
-        return new NodoLiteral(ch, ctx.LIT_CARACTER().getSymbol().getLine(), ctx.LIT_CARACTER().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitLitBooleano(piglatinParser.LitBooleanoContext ctx) {
-        return visit(ctx.literalBooleano());
+        return UtilidadesAst.literalCaracter(ctx.LIT_CARACTER());
     }
 
     @Override

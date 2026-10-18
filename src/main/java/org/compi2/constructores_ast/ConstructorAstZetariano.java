@@ -177,16 +177,6 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInicExpresion(zetarianoParser.InicExpresionContext ctx) {
-        return visit(ctx.expresion());
-    }
-
-    @Override
-    public NodoAST visitInicLista(zetarianoParser.InicListaContext ctx) {
-        return visit(ctx.listaInicializador());
-    }
-
-    @Override
     public NodoAST visitListaInicializador(zetarianoParser.ListaInicializadorContext ctx) {
         List<NodoAST> valores = new ArrayList<>();
         for (zetarianoParser.InicializadorContext inic : ctx.inicializador()) {
@@ -239,7 +229,7 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
         String op = ctx.INCREMENTO() != null ? "++" : "--";
         int l = ctx.getStart().getLine();
         int c = ctx.getStart().getCharPositionInLine();
-        return new NodoOperacionUnaria(op, dest, l, c);
+        return new NodoOperacionUnaria(op, dest, l, c, false);
     }
 
     @Override
@@ -252,11 +242,6 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstSi(zetarianoParser.InstSiContext ctx) {
-        return visit(ctx.condicionalSi());
-    }
-
-    @Override
     public NodoAST visitCondicionalSi(zetarianoParser.CondicionalSiContext ctx) {
         NodoAST cond = visit(ctx.expresion());
         List<NodoAST> cuerpoSi = obtenerInstruccionesDeInst(ctx.instruccion(0));
@@ -264,11 +249,6 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
                 : null;
         return new NodoIf(cond, cuerpoSi, cuerpoSino, ctx.SI().getSymbol().getLine(),
                 ctx.SI().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitInstSwitch(zetarianoParser.InstSwitchContext ctx) {
-        return visit(ctx.seleccionSwitch());
     }
 
     @Override
@@ -305,11 +285,6 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitInstFor(zetarianoParser.InstForContext ctx) {
-        return visit(ctx.cicloFor());
-    }
-
-    @Override
     public NodoAST visitCicloFor(zetarianoParser.CicloForContext ctx) {
         NodoAST init = ctx.inicioFor() != null ? visit(ctx.inicioFor()) : null;
         NodoAST cond = ctx.expresion() != null ? visit(ctx.expresion()) : null;
@@ -320,25 +295,10 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitForInicioDeclaracion(zetarianoParser.ForInicioDeclaracionContext ctx) {
-        return visit(ctx.declaracionLocalBase());
-    }
-
-    @Override
-    public NodoAST visitForInicioAsignacion(zetarianoParser.ForInicioAsignacionContext ctx) {
-        return visit(ctx.asignacion());
-    }
-
-    @Override
     public NodoAST visitPasoFor(zetarianoParser.PasoForContext ctx) {
         if (ctx.asignacion() != null)
             return visit(ctx.asignacion());
         return visit(ctx.incrementoDecremento());
-    }
-
-    @Override
-    public NodoAST visitInstWhile(zetarianoParser.InstWhileContext ctx) {
-        return visit(ctx.cicloWhile());
     }
 
     @Override
@@ -347,11 +307,6 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
         List<NodoAST> cuerpo = obtenerInstruccionesDeInst(ctx.instruccion());
         return new NodoWhile(cond, cuerpo, ctx.MIENTRAS().getSymbol().getLine(),
                 ctx.MIENTRAS().getSymbol().getCharPositionInLine());
-    }
-
-    @Override
-    public NodoAST visitInstDoWhile(zetarianoParser.InstDoWhileContext ctx) {
-        return visit(ctx.cicloDoWhile());
     }
 
     @Override
@@ -455,46 +410,34 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
 
     @Override
     public NodoAST visitExprMultiplicativa(zetarianoParser.ExprMultiplicativaContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprAditiva(zetarianoParser.ExprAditivaContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprRelacional(zetarianoParser.ExprRelacionalContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprIgualdad(zetarianoParser.ExprIgualdadContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, ctx.op.getText(), der, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), ctx.op, visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprConjuncion(zetarianoParser.ExprConjuncionContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, "&&", der, ctx.Y_LOGICO().getSymbol().getLine(),
-                ctx.Y_LOGICO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), "&&", ctx.Y_LOGICO().getSymbol(),
+                visit(ctx.expresion(1)));
     }
 
     @Override
     public NodoAST visitExprDisyuncion(zetarianoParser.ExprDisyuncionContext ctx) {
-        NodoAST izq = visit(ctx.expresion(0));
-        NodoAST der = visit(ctx.expresion(1));
-        return new NodoOperacionBinaria(izq, "||", der, ctx.O_LOGICO().getSymbol().getLine(),
-                ctx.O_LOGICO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.binaria(visit(ctx.expresion(0)), "||", ctx.O_LOGICO().getSymbol(),
+                visit(ctx.expresion(1)));
     }
 
     @Override
@@ -512,17 +455,12 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
     @Override
     public NodoAST visitExprPostfijo(zetarianoParser.ExprPostfijoContext ctx) {
         NodoAST exp = visit(ctx.expresion());
-        return new NodoOperacionUnaria(ctx.op.getText(), exp, ctx.op.getLine(), ctx.op.getCharPositionInLine());
+        return new NodoOperacionUnaria(ctx.op.getText(), exp, ctx.op.getLine(), ctx.op.getCharPositionInLine(), false);
     }
 
     @Override
     public NodoAST visitExprParentesis(zetarianoParser.ExprParentesisContext ctx) {
         return visit(ctx.expresion());
-    }
-
-    @Override
-    public NodoAST visitExprEncadenado(zetarianoParser.ExprEncadenadoContext ctx) {
-        return visit(ctx.encadenado());
     }
 
     @Override
@@ -572,37 +510,23 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
     }
 
     @Override
-    public NodoAST visitExprLiteral(zetarianoParser.ExprLiteralContext ctx) {
-        return visit(ctx.literal());
-    }
-
-    @Override
     public NodoAST visitLitEntero(zetarianoParser.LitEnteroContext ctx) {
-        int val = Integer.parseInt(ctx.LIT_ENTERO().getText());
-        return new NodoLiteral(val, ctx.LIT_ENTERO().getSymbol().getLine(),
-                ctx.LIT_ENTERO().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalEntero(ctx.LIT_ENTERO());
     }
 
     @Override
     public NodoAST visitLitDecimal(zetarianoParser.LitDecimalContext ctx) {
-        double val = Double.parseDouble(ctx.LIT_DECIMAL().getText());
-        return new NodoLiteral(val, ctx.LIT_DECIMAL().getSymbol().getLine(),
-                ctx.LIT_DECIMAL().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalDecimal(ctx.LIT_DECIMAL());
     }
 
     @Override
     public NodoAST visitLitCadena(zetarianoParser.LitCadenaContext ctx) {
-        String raw = ctx.LIT_CADENA().getText();
-        String str = raw.substring(1, raw.length() - 1);
-        return new NodoLiteral(str, ctx.LIT_CADENA().getSymbol().getLine(),
-                ctx.LIT_CADENA().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalCadena(ctx.LIT_CADENA());
     }
 
     @Override
     public NodoAST visitLitCaracter(zetarianoParser.LitCaracterContext ctx) {
-        char ch = ctx.LIT_CARACTER().getText().charAt(1);
-        return new NodoLiteral(ch, ctx.LIT_CARACTER().getSymbol().getLine(),
-                ctx.LIT_CARACTER().getSymbol().getCharPositionInLine());
+        return UtilidadesAst.literalCaracter(ctx.LIT_CARACTER());
     }
 
     @Override
