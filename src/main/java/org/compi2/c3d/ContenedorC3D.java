@@ -6,10 +6,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-@Getter
 public class ContenedorC3D {
     private final List<Cuarteta> cuartetas = new ArrayList<>();
+    @Getter
     private final GestorTemporales gestorTemporales;
+    @Getter
     private final GestorEtiquetas gestorEtiquetas;
 
     public ContenedorC3D() {
@@ -72,14 +73,6 @@ public class ContenedorC3D {
         emitir(new Cuarteta(TipoOperadorC3D.ASIGNACION_HEAP, valor, null, posicion));
     }
 
-    public void emitirCall(String nombreFuncion) {
-        emitir(new Cuarteta(TipoOperadorC3D.CALL, null, null, nombreFuncion));
-    }
-
-    public void emitirReturn() {
-        emitir(new Cuarteta(TipoOperadorC3D.RETURN, null, null, null));
-    }
-
     public void emitirPrintInt(String valor) {
         emitir(new Cuarteta(TipoOperadorC3D.PRINT_INT, valor, null, null));
     }
@@ -92,8 +85,12 @@ public class ContenedorC3D {
         emitir(new Cuarteta(TipoOperadorC3D.PRINT_CHAR, valor, null, null));
     }
 
-    public void emitirPrintStr(String punteroHeap) {
-        emitir(new Cuarteta(TipoOperadorC3D.PRINT_STR, punteroHeap, null, null));
+    public void emitirAccesoBuffer(String temporalResultado, String posicion) {
+        emitir(new Cuarteta(TipoOperadorC3D.ACCESO_BUFFER, posicion, null, temporalResultado));
+    }
+
+    public void emitirAsignacionBuffer(String posicion, String valor) {
+        emitir(new Cuarteta(TipoOperadorC3D.ASIGNACION_BUFFER, valor, null, posicion));
     }
 
     public List<Cuarteta> getCuartetas() {
@@ -111,22 +108,18 @@ public class ContenedorC3D {
     }
 
     public String generarCodigoC(String indentacion) {
-        return generarCodigoC(indentacion, false);
-    }
-
-    public String generarCodigoC(String indentacion, boolean conComentarios) {
-        StringBuilder sb = new StringBuilder();
-        for (Cuarteta c : cuartetas) {
-            String linea = c.toCodigoC();
+        StringBuilder codigo = new StringBuilder();
+        for (Cuarteta cuarteta : cuartetas) {
+            String linea = cuarteta.toCodigoC();
             if (linea.isBlank()) {
                 continue;
             }
-            if (c.getOperador() == TipoOperadorC3D.ETIQUETA) {
-                sb.append(linea).append("\n");
-            } else {
-                sb.append(indentacion).append(linea).append("\n");
+            if (cuarteta.getOperador() != TipoOperadorC3D.ETIQUETA) {
+                codigo.append(indentacion);
             }
+            codigo.append(linea).append("\n");
         }
-        return sb.toString();
+        return codigo.toString();
     }
+
 }

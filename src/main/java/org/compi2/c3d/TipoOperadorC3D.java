@@ -1,13 +1,16 @@
 package org.compi2.c3d;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 @Getter
+@RequiredArgsConstructor
 public enum TipoOperadorC3D {
     SUMA("+"),
     RESTA("-"),
     MULTIPLICACION("*"),
     DIVISION("/"),
+    DIVISION_ENTERA("//"),
     MODULO("%"),
     MENOS_UNARIO("-"),
 
@@ -27,26 +30,14 @@ public enum TipoOperadorC3D {
     ACCESO_HEAP("heap_get"),
     ASIGNACION_HEAP("heap_set"),
 
-    INICIO_FUNCION("func_begin"),
-    FIN_FUNCION("func_end"),
-    CALL("call"),
-    RETURN("return"),
+    ACCESO_BUFFER("buffer_get"),
+    ASIGNACION_BUFFER("buffer_set"),
 
     PRINT_INT("print_int"),
     PRINT_DOUBLE("print_double"),
     PRINT_CHAR("print_char"),
-    PRINT_STR("print_str"),
 
-    READ_NUM("read_num"),
-    READ_STR("read_str"),
-
-    CONCAT_STR_STR("concat_str_str"),
-    CONCAT_STR_NUM("concat_str_num"),
-    CONCAT_NUM_STR("concat_num_str");
+    READ_STR("read_str");
 
     private final String simbolo;
-
-    TipoOperadorC3D(String simbolo) {
-        this.simbolo = simbolo;
-    }
 }

@@ -1,31 +1,29 @@
 package org.compi2.c3d;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
-
 public class GestorTemporales {
     private int contador = 0;
-    private final Set<String> temporalesUsados = new LinkedHashSet<>();
-
-    public GestorTemporales() {
-        this.contador = 0;
-    }
 
     public String nuevoTemporal() {
-        String temporal = "t" + (contador++);
-        temporalesUsados.add(temporal);
+        String temporal = "t" + contador;
+        contador++;
         return temporal;
     }
 
     public String generarDeclaracionC() {
-        if (temporalesUsados.isEmpty()) {
+        if (contador == 0) {
             return "";
         }
-        return "double " + String.join(", ", temporalesUsados) + ";";
+        StringBuilder declaracion = new StringBuilder("double ");
+        for (int i = 0; i < contador; i++) {
+            if (i > 0) {
+                declaracion.append(", ");
+            }
+            declaracion.append("t").append(i);
+        }
+        return declaracion.append(";").toString();
     }
 
     public void reiniciar() {
-        this.contador = 0;
-        this.temporalesUsados.clear();
+        contador = 0;
     }
 }

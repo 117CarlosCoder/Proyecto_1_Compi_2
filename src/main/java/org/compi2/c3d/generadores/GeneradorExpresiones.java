@@ -1,314 +1,501 @@
 package org.compi2.c3d.generadores;
 
-import lombok.Setter;
 import org.compi2.ast.NodoAST;
-import org.compi2.ast.expresiones.*;
+import org.compi2.ast.expresiones.NodoAccesoArreglo;
+import org.compi2.ast.expresiones.NodoAccesoMiembro;
+import org.compi2.ast.expresiones.NodoExpresionLectura;
+import org.compi2.ast.expresiones.NodoExpresionTernaria;
+import org.compi2.ast.expresiones.NodoIdentificador;
+import org.compi2.ast.expresiones.NodoInstanciacionArreglo;
+import org.compi2.ast.expresiones.NodoInstanciacionObjeto;
+import org.compi2.ast.expresiones.NodoListaValores;
+import org.compi2.ast.expresiones.NodoLiteral;
+import org.compi2.ast.expresiones.NodoLlamadaFuncion;
+import org.compi2.ast.expresiones.NodoLlamadaMetodo;
+import org.compi2.ast.expresiones.NodoOperacionBinaria;
+import org.compi2.ast.expresiones.NodoOperacionUnaria;
 import org.compi2.c3d.ContenedorC3D;
-import org.compi2.c3d.Cuarteta;
 import org.compi2.c3d.TipoOperadorC3D;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
 
-import java.util.function.BiConsumer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GeneradorExpresiones {
     private final ContextoC3D contexto;
-    @Setter
-    private GeneradorSubrutinas generadorSubrutinas;
 
     public GeneradorExpresiones(ContextoC3D contexto) {
         this.contexto = contexto;
     }
 
-    public GeneradorExpresiones(ContextoC3D contexto, GeneradorSubrutinas generadorSubrutinas) {
-        this.contexto = contexto;
-        this.generadorSubrutinas = generadorSubrutinas;
-    }
-
     public String generarExpresion(NodoAST nodo) {
         if (nodo == null) return "0";
 
-        if (nodo instanceof NodoLiteral lit) {
-            return generarLiteral(lit);
-        } else if (nodo instanceof NodoIdentificador id) {
-            return generarIdentificador(id);
-        } else if (nodo instanceof NodoOperacionUnaria unaria) {
-            return generarOperacionUnaria(unaria);
-        } else if (nodo instanceof NodoOperacionBinaria bin) {
-            return generarOperacionBinaria(bin);
-        } else if (nodo instanceof NodoAccesoArreglo accArr) {
-            return generarAccesoArreglo(accArr);
-        } else if (nodo instanceof NodoAccesoMiembro accM) {
-            return generarAccesoMiembro(accM);
-        } else if (nodo instanceof NodoListaValores lista) {
-            return generarListaValores(lista);
-        } else if (nodo instanceof NodoInstanciacionArreglo instArr) {
-            return generarInstanciacionArreglo(instArr);
-        } else if (nodo instanceof NodoExpresionTernaria ternaria) {
-            return generarTernario(ternaria);
-        } else if (nodo instanceof NodoExpresionLectura) {
-            ContenedorC3D c3d = contexto.getC3d();
-            String tVal = c3d.nuevoTemporal();
-            c3d.emitir(new Cuarteta(TipoOperadorC3D.READ_STR, null, null, tVal));
-            return tVal;
-        } else if (nodo instanceof NodoInstanciacionObjeto instObj) {
-            return (generadorSubrutinas != null) ? generadorSubrutinas.generarInstanciacionObjeto(instObj) : "0";
-        } else if (nodo instanceof NodoLlamadaFuncion llamada) {
-            return (generadorSubrutinas != null) ? generadorSubrutinas.generarLlamadaFuncion(llamada) : "0";
-        } else if (nodo instanceof NodoLlamadaMetodo metodo) {
-            return (generadorSubrutinas != null) ? generadorSubrutinas.generarLlamadaMetodo(metodo) : "0";
-        }
-
-        return "0";
-    }
-
-    public String generarLiteral(NodoLiteral lit) {
-        ContenedorC3D c3d = contexto.getC3d();
-        if (lit.getValor() == null) {
-            return "0";
-        }
-        if (lit.getTipo().getBase() == TipoBase.CADENA) {
-            return generarLiteralCadena((String) lit.getValor(), c3d);
-        } else if (lit.getTipo().getBase() == TipoBase.BOOLEANO) {
-            return Boolean.TRUE.equals(lit.getValor()) ? "1" : "0";
-        } else if (lit.getTipo().getBase() == TipoBase.CARACTER) {
-            return String.valueOf((int) (Character) lit.getValor());
-        }
-        return String.valueOf(lit.getValor());
-    }
-
-    private String generarLiteralCadena(String str, ContenedorC3D c3d) {
-        String tBase = c3d.nuevoTemporal();
-        c3d.emitirAsignacion(tBase, "H");
-        for (int i = 0; i < str.length(); i++) {
-            c3d.emitirAsignacionHeap("H", String.valueOf((int) str.charAt(i)));
-            c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
-        }
-        c3d.emitirAsignacionHeap("H", "-1");
-        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
-        return tBase;
-    }
-
-    public String generarIdentificador(NodoIdentificador id) {
-        ContenedorC3D c3d = contexto.getC3d();
-        if (contexto.esCampoDeThis(id.getNombre())) {
-            int offCampo = contexto.obtenerOffsetCampoThis(id.getNombre());
-            int offThis = contexto.obtenerOffset("this");
-            String tThisPos = c3d.nuevoTemporal();
-            c3d.emitirOperacion(TipoOperadorC3D.SUMA, tThisPos, "P", String.valueOf(offThis));
-            String tThis = c3d.nuevoTemporal();
-            c3d.emitirAccesoStack(tThis, tThisPos);
-            String tPos = c3d.nuevoTemporal();
-            c3d.emitirOperacion(TipoOperadorC3D.SUMA, tPos, tThis, String.valueOf(offCampo));
-            String tVal = c3d.nuevoTemporal();
-            c3d.emitirAccesoHeap(tVal, tPos);
-            return tVal;
-        }
-        int offset = contexto.obtenerOffset(id.getNombre());
-        String tPos = c3d.nuevoTemporal();
-        c3d.emitirOperacion(TipoOperadorC3D.SUMA, tPos, "P", String.valueOf(offset));
-        String tVal = c3d.nuevoTemporal();
-        c3d.emitirAccesoStack(tVal, tPos);
-        return tVal;
-    }
-
-    public String generarOperacionUnaria(NodoOperacionUnaria unaria) {
-        ContenedorC3D c3d = contexto.getC3d();
-        String opVal = generarExpresion(unaria.getExpresion());
-        String tRes = c3d.nuevoTemporal();
-
-        return switch (unaria.getOperador()) {
-            case "-" -> {
-                c3d.emitirOperacion(TipoOperadorC3D.MENOS_UNARIO, tRes, opVal, null);
-                yield tRes;
-            }
-            case "!" -> generarCortoCircuito(tRes, (lTrue, lFalse) -> {
-                c3d.emitirIf(TipoOperadorC3D.IF_IGUAL, opVal, "0", lTrue);
-                c3d.emitirGoto(lFalse);
-            });
-            case "++", "--" -> generarIncrementoDecremento(unaria);
-            default -> opVal;
-        };
-    }
-
-    private String generarIncrementoDecremento(NodoOperacionUnaria unaria) {
-        if (!(unaria.getExpresion() instanceof NodoIdentificador id)) {
-            return "0";
-        }
-        ContenedorC3D c3d = contexto.getC3d();
-        TipoOperadorC3D op = "++".equals(unaria.getOperador()) ? TipoOperadorC3D.SUMA : TipoOperadorC3D.RESTA;
-        String tNuevo = c3d.nuevoTemporal();
-
-        if (contexto.esCampoDeThis(id.getNombre())) {
-            int offCampo = contexto.obtenerOffsetCampoThis(id.getNombre());
-            int offThis = contexto.obtenerOffset("this");
-            String tThisPos = c3d.nuevoTemporal();
-            c3d.emitirOperacion(TipoOperadorC3D.SUMA, tThisPos, "P", String.valueOf(offThis));
-            String tThis = c3d.nuevoTemporal();
-            c3d.emitirAccesoStack(tThis, tThisPos);
-            String tPos = c3d.nuevoTemporal();
-            c3d.emitirOperacion(TipoOperadorC3D.SUMA, tPos, tThis, String.valueOf(offCampo));
-            String tVal = c3d.nuevoTemporal();
-            c3d.emitirAccesoHeap(tVal, tPos);
-            c3d.emitirOperacion(op, tNuevo, tVal, "1");
-            c3d.emitirAsignacionHeap(tPos, tNuevo);
-            return unaria.isEsPrefijo() ? tNuevo : tVal;
-        }
-
-        int offset = contexto.obtenerOffset(id.getNombre());
-        String tPos = c3d.nuevoTemporal();
-        c3d.emitirOperacion(TipoOperadorC3D.SUMA, tPos, "P", String.valueOf(offset));
-        String tVal = c3d.nuevoTemporal();
-        c3d.emitirAccesoStack(tVal, tPos);
-        c3d.emitirOperacion(op, tNuevo, tVal, "1");
-        c3d.emitirAsignacionStack(tPos, tNuevo);
-        return unaria.isEsPrefijo() ? tNuevo : tVal;
-    }
-
-    public String generarOperacionBinaria(NodoOperacionBinaria bin) {
-        ContenedorC3D c3d = contexto.getC3d();
-        String izq = generarExpresion(bin.getIzq());
-        String der = generarExpresion(bin.getDer());
-        String tRes = c3d.nuevoTemporal();
-
-        return switch (bin.getOperador()) {
-            case "+" -> {
-                Tipo tIzq = contexto.resolverTipoEstructura(bin.getIzq());
-                Tipo tDer = contexto.resolverTipoEstructura(bin.getDer());
-                boolean izqCad = (tIzq != null && tIzq.getBase() == TipoBase.CADENA);
-                boolean derCad = (tDer != null && tDer.getBase() == TipoBase.CADENA);
-
-                if (izqCad && derCad) {
-                    yield emitirYRetornar(tRes, () -> c3d.emitir(new Cuarteta(TipoOperadorC3D.CONCAT_STR_STR, izq, der, tRes)));
-                } else if (izqCad) {
-                    yield emitirYRetornar(tRes, () -> c3d.emitir(new Cuarteta(TipoOperadorC3D.CONCAT_STR_NUM, izq, der, tRes)));
-                } else if (derCad) {
-                    yield emitirYRetornar(tRes, () -> c3d.emitir(new Cuarteta(TipoOperadorC3D.CONCAT_NUM_STR, izq, der, tRes)));
-                }
-                yield emitirYRetornar(tRes, () -> c3d.emitirOperacion(TipoOperadorC3D.SUMA, tRes, izq, der));
-            }
-            case "-" -> emitirYRetornar(tRes, () -> c3d.emitirOperacion(TipoOperadorC3D.RESTA, tRes, izq, der));
-            case "*" -> emitirYRetornar(tRes, () -> c3d.emitirOperacion(TipoOperadorC3D.MULTIPLICACION, tRes, izq, der));
-            case "/" -> emitirYRetornar(tRes, () -> c3d.emitirOperacion(TipoOperadorC3D.DIVISION, tRes, izq, der));
-            case "%" -> emitirYRetornar(tRes, () -> c3d.emitirOperacion(TipoOperadorC3D.MODULO, tRes, izq, der));
-            case "==" -> emitirRelacional(TipoOperadorC3D.IF_IGUAL, izq, der);
-            case "!=" -> emitirRelacional(TipoOperadorC3D.IF_DIFERENTE, izq, der);
-            case "<" -> emitirRelacional(TipoOperadorC3D.IF_MENOR, izq, der);
-            case "<=" -> emitirRelacional(TipoOperadorC3D.IF_MENOR_IGUAL, izq, der);
-            case ">" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR, izq, der);
-            case ">=" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR_IGUAL, izq, der);
-            case "&&" -> generarCortoCircuito(tRes, (lTrue, lFalse) -> {
-                c3d.emitirIf(TipoOperadorC3D.IF_IGUAL, izq, "0", lFalse);
-                c3d.emitirIf(TipoOperadorC3D.IF_IGUAL, der, "0", lFalse);
-                c3d.emitirGoto(lTrue);
-            });
-            case "||" -> generarCortoCircuito(tRes, (lTrue, lFalse) -> {
-                c3d.emitirIf(TipoOperadorC3D.IF_DIFERENTE, izq, "0", lTrue);
-                c3d.emitirIf(TipoOperadorC3D.IF_DIFERENTE, der, "0", lTrue);
-                c3d.emitirGoto(lFalse);
-            });
+        return switch (nodo) {
+            case NodoLiteral lit -> generarLiteral(lit);
+            case NodoIdentificador id -> generarIdentificador(id);
+            case NodoOperacionUnaria unaria -> generarOperacionUnaria(unaria);
+            case NodoOperacionBinaria bin -> generarOperacionBinaria(bin);
+            case NodoAccesoArreglo accArr -> generarAccesoArreglo(accArr);
+            case NodoAccesoMiembro accM -> generarAccesoMiembro(accM);
+            case NodoListaValores lista -> generarListaValores(lista);
+            case NodoInstanciacionArreglo instArr -> generarInstanciacionArreglo(instArr);
+            case NodoInstanciacionObjeto instObj -> generarInstanciacionObjeto(instObj);
+            case NodoExpresionTernaria ternaria -> generarTernario(ternaria);
+            case NodoExpresionLectura lectura -> generarExpresionLectura(lectura);
+            case NodoLlamadaFuncion llamada -> generarLlamadaFuncion(llamada);
+            case NodoLlamadaMetodo metodo -> generarLlamadaMetodo(metodo);
             default -> "0";
         };
     }
 
-    private String emitirYRetornar(String tRes, Runnable accion) {
-        accion.run();
-        return tRes;
+    public String generarLiteral(NodoLiteral literal) {
+        if (literal.getValor() == null) return "0";
+        TipoBase base = (literal.getTipo() != null) ? literal.getTipo().getBase() : null;
+
+        return switch (base) {
+            case CADENA -> generarLiteralCadena((String) literal.getValor());
+            case BOOLEANO -> Boolean.TRUE.equals(literal.getValor()) ? "1" : "0";
+            case CARACTER -> String.valueOf((int) (Character) literal.getValor());
+            case null, default -> String.valueOf(literal.getValor());
+        };
     }
 
-    public String emitirRelacional(TipoOperadorC3D opRel, String izq, String der) {
-        ContenedorC3D c3d = contexto.getC3d();
-        String tRes = c3d.nuevoTemporal();
-        return generarCortoCircuito(tRes, (lTrue, lFalse) -> {
-            c3d.emitirIf(opRel, izq, der, lTrue);
-            c3d.emitirGoto(lFalse);
-        });
+    private String generarExpresionLectura(NodoExpresionLectura lectura) {
+        Tipo tipo = lectura.getTipoResuelto();
+        if (tipo == null || tipo.getBase() == TipoBase.CADENA) {
+            return contexto.emitirReadStr();
+        }
+        String valor = contexto.getC3d().nuevoTemporal();
+        contexto.emitirReadNum(valor);
+        return valor;
     }
 
-
-    private String generarCortoCircuito(String tRes, BiConsumer<String, String> emitirSaltos) {
+    private String generarLiteralCadena(String texto) {
         ContenedorC3D c3d = contexto.getC3d();
-        String lTrue = c3d.nuevaEtiqueta();
-        String lFalse = c3d.nuevaEtiqueta();
-        String lFin = c3d.nuevaEtiqueta();
-
-        emitirSaltos.accept(lTrue, lFalse);
-
-        c3d.emitirEtiqueta(lTrue);
-        c3d.emitirAsignacion(tRes, "1");
-        c3d.emitirGoto(lFin);
-        c3d.emitirEtiqueta(lFalse);
-        c3d.emitirAsignacion(tRes, "0");
-        c3d.emitirEtiqueta(lFin);
-        return tRes;
+        String inicioCadena = c3d.nuevoTemporal();
+        c3d.emitirAsignacion(inicioCadena, "H");
+        for (int i = 0; i < texto.length(); i++) {
+            c3d.emitirAsignacionHeap("H", String.valueOf((int) texto.charAt(i)));
+            c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
+        }
+        c3d.emitirAsignacionHeap("H", "-1");
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
+        return inicioCadena;
     }
 
-    public String generarAccesoArreglo(NodoAccesoArreglo accArr) {
-        ContenedorC3D c3d = contexto.getC3d();
-        String tArr = generarExpresion(accArr.getEstructura());
-        String tIdx = generarExpresion(accArr.getIndice());
-        String tPos = c3d.nuevoTemporal();
-        c3d.emitirOperacion(TipoOperadorC3D.SUMA, tPos, tArr, tIdx);
-        String tVal = c3d.nuevoTemporal();
-        c3d.emitirAccesoHeap(tVal, tPos);
-        return tVal;
+    public String generarIdentificador(NodoIdentificador id) {
+        return contexto.leerVariable(id.getNombre());
     }
 
-    public String generarAccesoMiembro(NodoAccesoMiembro accM) {
+    public String generarOperacionUnaria(NodoOperacionUnaria unaria) {
+        if ("++".equals(unaria.getOperador()) || "--".equals(unaria.getOperador())) {
+            return generarIncrementoDecremento(unaria);
+        }
+
         ContenedorC3D c3d = contexto.getC3d();
-        String tObj = generarExpresion(accM.getEstructura());
-        int offset = contexto.obtenerOffsetCampo(accM.getEstructura(), accM.getNombreCampo());
-        String tPos = c3d.nuevoTemporal();
-        c3d.emitirOperacion(TipoOperadorC3D.SUMA, tPos, tObj, String.valueOf(offset));
-        String tVal = c3d.nuevoTemporal();
-        c3d.emitirAccesoHeap(tVal, tPos);
-        return tVal;
+        String valor = generarExpresion(unaria.getExpresion());
+        String resultado = c3d.nuevoTemporal();
+
+        return switch (unaria.getOperador()) {
+            case "-" -> {
+                c3d.emitirOperacion(TipoOperadorC3D.MENOS_UNARIO, resultado, valor, null);
+                yield resultado;
+            }
+            case "!" -> generarNegacionLogica(valor, resultado);
+            default -> valor;
+        };
+    }
+
+    private String generarIncrementoDecremento(NodoOperacionUnaria unaria) {
+        boolean esIncremento = "++".equals(unaria.getOperador());
+        boolean esPrefijo = unaria.isEsPrefijo();
+        return switch (unaria.getExpresion()) {
+            case NodoIdentificador id -> contexto.aplicarIncremento(id.getNombre(), esIncremento, esPrefijo);
+            case NodoAccesoMiembro acceso -> {
+                String objeto = generarExpresion(acceso.getEstructura());
+                int offset = contexto.obtenerOffsetCampo(acceso.getEstructura(), acceso.getNombreCampo());
+                yield aplicarIncrementoHeap(objeto, String.valueOf(offset), esIncremento, esPrefijo);
+            }
+            case NodoAccesoArreglo acceso -> {
+                String arreglo = generarExpresion(acceso.getEstructura());
+                contexto.registrarTemporalActivo(arreglo);
+                String indice = generarExpresion(acceso.getIndice());
+                contexto.desregistrarTemporalActivo(arreglo);
+                yield aplicarIncrementoHeap(arreglo, indice, esIncremento, esPrefijo);
+            }
+            case null, default -> "0";
+        };
+    }
+
+    private String aplicarIncrementoHeap(String base, String offset, boolean esIncremento, boolean esPrefijo) {
+        ContenedorC3D c3d = contexto.getC3d();
+        TipoOperadorC3D operador = esIncremento ? TipoOperadorC3D.SUMA : TipoOperadorC3D.RESTA;
+        String tempPosicion = c3d.nuevoTemporal();
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempPosicion, base, offset);
+        String tempValorActual = c3d.nuevoTemporal();
+        c3d.emitirAccesoHeap(tempValorActual, tempPosicion);
+        String tempNuevoValor = c3d.nuevoTemporal();
+        c3d.emitirOperacion(operador, tempNuevoValor, tempValorActual, "1");
+        c3d.emitirAsignacionHeap(tempPosicion, tempNuevoValor);
+        return esPrefijo ? tempNuevoValor : tempValorActual;
+    }
+
+    public String generarOperacionBinaria(NodoOperacionBinaria operacion) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String izquierda = generarExpresion(operacion.getIzq());
+        // Una llamada a la derecha puede reutilizar temporales: proteger la izquierda.
+        contexto.registrarTemporalActivo(izquierda);
+        String derecha = generarExpresion(operacion.getDer());
+        contexto.desregistrarTemporalActivo(izquierda);
+        String resultado = c3d.nuevoTemporal();
+
+        return switch (operacion.getOperador()) {
+            case "+" -> generarSuma(operacion, izquierda, derecha, resultado);
+            case "-" -> emitirOperacionAritmetica(TipoOperadorC3D.RESTA, resultado, izquierda, derecha);
+            case "*" -> emitirOperacionAritmetica(TipoOperadorC3D.MULTIPLICACION, resultado, izquierda, derecha);
+            case "/" -> generarDivision(operacion, izquierda, derecha, resultado);
+            case "%" -> emitirOperacionAritmetica(TipoOperadorC3D.MODULO, resultado, izquierda, derecha);
+            case "==" -> emitirRelacional(TipoOperadorC3D.IF_IGUAL, izquierda, derecha);
+            case "!=" -> emitirRelacional(TipoOperadorC3D.IF_DIFERENTE, izquierda, derecha);
+            case "<" -> emitirRelacional(TipoOperadorC3D.IF_MENOR, izquierda, derecha);
+            case "<=" -> emitirRelacional(TipoOperadorC3D.IF_MENOR_IGUAL, izquierda, derecha);
+            case ">" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR, izquierda, derecha);
+            case ">=" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR_IGUAL, izquierda, derecha);
+            case "&&" -> generarAndLogico(izquierda, derecha, resultado);
+            case "||" -> generarOrLogico(izquierda, derecha, resultado);
+            default -> "0";
+        };
+    }
+
+    private String generarSuma(NodoOperacionBinaria operacion, String izquierda, String derecha, String resultado) {
+        Tipo tipoIzquierda = operacion.getTipoIzq() != null
+                ? operacion.getTipoIzq()
+                : contexto.resolverTipoEstructura(operacion.getIzq());
+        Tipo tipoDerecha = operacion.getTipoDer() != null
+                ? operacion.getTipoDer()
+                : contexto.resolverTipoEstructura(operacion.getDer());
+        boolean izquierdaEsCadena = tipoIzquierda != null && tipoIzquierda.getBase() == TipoBase.CADENA;
+        boolean derechaEsCadena = tipoDerecha != null && tipoDerecha.getBase() == TipoBase.CADENA;
+        boolean izquierdaEsCaracter = tipoIzquierda != null && tipoIzquierda.getBase() == TipoBase.CARACTER;
+        boolean derechaEsCaracter = tipoDerecha != null && tipoDerecha.getBase() == TipoBase.CARACTER;
+
+        if (izquierdaEsCadena && derechaEsCadena) {
+            return contexto.emitirConcatStrStr(izquierda, derecha);
+        }
+        if (izquierdaEsCadena && derechaEsCaracter) {
+            return contexto.emitirConcatStrStr(izquierda, convertirCaracterCadena(derecha));
+        }
+        if (izquierdaEsCaracter && derechaEsCadena) {
+            return contexto.emitirConcatStrStr(convertirCaracterCadena(izquierda), derecha);
+        }
+        if (izquierdaEsCadena) {
+            return contexto.emitirConcatStrNum(izquierda, derecha);
+        }
+        if (derechaEsCadena) {
+            return contexto.emitirConcatNumStr(izquierda, derecha);
+        }
+        return emitirOperacionAritmetica(TipoOperadorC3D.SUMA, resultado, izquierda, derecha);
+    }
+
+    private String generarDivision(NodoOperacionBinaria operacion, String izquierda, String derecha, String resultado) {
+        Tipo tipoIzquierda = operacion.getTipoIzq() != null
+                ? operacion.getTipoIzq()
+                : contexto.resolverTipoEstructura(operacion.getIzq());
+        Tipo tipoDerecha = operacion.getTipoDer() != null
+                ? operacion.getTipoDer()
+                : contexto.resolverTipoEstructura(operacion.getDer());
+
+        boolean izqEnteroOCaracter = tipoIzquierda != null
+                && (tipoIzquierda.getBase() == TipoBase.ENTERO || tipoIzquierda.getBase() == TipoBase.CARACTER);
+        boolean derEnteroOCaracter = tipoDerecha != null
+                && (tipoDerecha.getBase() == TipoBase.ENTERO || tipoDerecha.getBase() == TipoBase.CARACTER);
+
+        TipoOperadorC3D operador = (izqEnteroOCaracter && derEnteroOCaracter)
+                ? TipoOperadorC3D.DIVISION_ENTERA
+                : TipoOperadorC3D.DIVISION;
+
+        return emitirOperacionAritmetica(operador, resultado, izquierda, derecha);
+    }
+
+    private String convertirCaracterCadena(String valorCaracter) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String inicioCadena = c3d.nuevoTemporal();
+        c3d.emitirAsignacion(inicioCadena, "H");
+        c3d.emitirAsignacionHeap("H", valorCaracter);
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
+        c3d.emitirAsignacionHeap("H", "-1");
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
+        return inicioCadena;
+    }
+
+    private String emitirOperacionAritmetica(TipoOperadorC3D operador, String resultado, String izquierda, String derecha) {
+        contexto.getC3d().emitirOperacion(operador, resultado, izquierda, derecha);
+        return resultado;
+    }
+
+    public String emitirRelacional(TipoOperadorC3D operador, String izquierda, String derecha) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String resultado = c3d.nuevoTemporal();
+        String verdadero = c3d.nuevaEtiqueta();
+        String falso = c3d.nuevaEtiqueta();
+        String fin = c3d.nuevaEtiqueta();
+
+        c3d.emitirIf(operador, izquierda, derecha, verdadero);
+        c3d.emitirGoto(falso);
+
+        return materializarBooleano(resultado, verdadero, falso, fin);
+    }
+
+    private String generarNegacionLogica(String valor, String resultado) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String verdadero = c3d.nuevaEtiqueta();
+        String falso = c3d.nuevaEtiqueta();
+        String fin = c3d.nuevaEtiqueta();
+
+        c3d.emitirIf(TipoOperadorC3D.IF_IGUAL, valor, "0", verdadero);
+        c3d.emitirGoto(falso);
+
+        return materializarBooleano(resultado, verdadero, falso, fin);
+    }
+
+    private String generarAndLogico(String izquierda, String derecha, String resultado) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String verdadero = c3d.nuevaEtiqueta();
+        String falso = c3d.nuevaEtiqueta();
+        String fin = c3d.nuevaEtiqueta();
+
+        c3d.emitirIf(TipoOperadorC3D.IF_IGUAL, izquierda, "0", falso);
+        c3d.emitirIf(TipoOperadorC3D.IF_IGUAL, derecha, "0", falso);
+        c3d.emitirGoto(verdadero);
+
+        return materializarBooleano(resultado, verdadero, falso, fin);
+    }
+
+    private String generarOrLogico(String izquierda, String derecha, String resultado) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String verdadero = c3d.nuevaEtiqueta();
+        String falso = c3d.nuevaEtiqueta();
+        String fin = c3d.nuevaEtiqueta();
+
+        c3d.emitirIf(TipoOperadorC3D.IF_DIFERENTE, izquierda, "0", verdadero);
+        c3d.emitirIf(TipoOperadorC3D.IF_DIFERENTE, derecha, "0", verdadero);
+        c3d.emitirGoto(falso);
+
+        return materializarBooleano(resultado, verdadero, falso, fin);
+    }
+
+    // Las expresiones booleanas también necesitan un valor para asignarse o imprimirse.
+    private String materializarBooleano(String resultado, String verdadero, String falso, String fin) {
+        ContenedorC3D c3d = contexto.getC3d();
+        c3d.emitirEtiqueta(verdadero);
+        c3d.emitirAsignacion(resultado, "1");
+        c3d.emitirGoto(fin);
+        c3d.emitirEtiqueta(falso);
+        c3d.emitirAsignacion(resultado, "0");
+        c3d.emitirEtiqueta(fin);
+        return resultado;
+    }
+
+    public String generarAccesoArreglo(NodoAccesoArreglo acceso) {
+        String arreglo = generarExpresion(acceso.getEstructura());
+        contexto.registrarTemporalActivo(arreglo);
+        String indice = generarExpresion(acceso.getIndice());
+        contexto.desregistrarTemporalActivo(arreglo);
+        return contexto.leerHeap(arreglo, indice);
+    }
+
+    public String generarAccesoMiembro(NodoAccesoMiembro acceso) {
+        String objeto = generarExpresion(acceso.getEstructura());
+        int offset = contexto.obtenerOffsetCampo(acceso.getEstructura(), acceso.getNombreCampo());
+        return contexto.leerHeap(objeto, String.valueOf(offset));
     }
 
     public String generarListaValores(NodoListaValores lista) {
         ContenedorC3D c3d = contexto.getC3d();
-        String tBase = c3d.nuevoTemporal();
-        c3d.emitirAsignacion(tBase, "H");
-        for (NodoAST elem : lista.getElementos()) {
-            String tElem = generarExpresion(elem);
-            c3d.emitirAsignacionHeap("H", tElem);
-            c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
+        List<NodoAST> elementos = (lista.getElementos() != null) ? lista.getElementos() : List.of();
+        String inicioLista = c3d.nuevoTemporal();
+        c3d.emitirAsignacion(inicioLista, "H");
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", String.valueOf(elementos.size()));
+        contexto.registrarTemporalActivo(inicioLista);
+        for (int i = 0; i < elementos.size(); i++) {
+            String valor = generarExpresion(elementos.get(i));
+            contexto.escribirHeap(inicioLista, String.valueOf(i), valor);
         }
-        return tBase;
+        contexto.desregistrarTemporalActivo(inicioLista);
+        return inicioLista;
     }
 
-    public String generarInstanciacionArreglo(NodoInstanciacionArreglo instArr) {
+    public String generarInstanciacionArreglo(NodoInstanciacionArreglo arreglo) {
         ContenedorC3D c3d = contexto.getC3d();
-        String tTam = (!instArr.getTamanosDimensiones().isEmpty())
-            ? generarExpresion(instArr.getTamanosDimensiones().get(0))
-            : "1";
-        String tBase = c3d.nuevoTemporal();
-        c3d.emitirAsignacion(tBase, "H");
-        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", tTam);
-        return tBase;
+        List<NodoAST> exprDims = (arreglo.getTamanosDimensiones() != null) ? arreglo.getTamanosDimensiones() : List.of();
+        List<String> dimensiones = new ArrayList<>();
+        if (exprDims.isEmpty()) {
+            dimensiones.add("1");
+        } else {
+            for (NodoAST exprDim : exprDims) {
+                String valorDim = generarExpresion(exprDim);
+                contexto.registrarTemporalActivo(valorDim);
+                dimensiones.add(valorDim);
+            }
+        }
+
+        String base = emitirReservaDimension(dimensiones, 0);
+
+        for (String dim : dimensiones) {
+            contexto.desregistrarTemporalActivo(dim);
+        }
+
+        return base;
+    }
+
+    private String emitirReservaDimension(List<String> dimensiones, int nivel) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String tamano = dimensiones.get(nivel);
+        String base = c3d.nuevoTemporal();
+        c3d.emitirAsignacion(base, "H");
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", tamano);
+
+        String idx = c3d.nuevoTemporal();
+        c3d.emitirAsignacion(idx, "0");
+        String lblInicio = c3d.nuevaEtiqueta();
+        String lblFin = c3d.nuevaEtiqueta();
+        c3d.emitirEtiqueta(lblInicio);
+        c3d.emitirIf(TipoOperadorC3D.IF_MAYOR_IGUAL, idx, tamano, lblFin);
+        String pos = c3d.nuevoTemporal();
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, pos, base, idx);
+        if (nivel == dimensiones.size() - 1) {
+            c3d.emitirAsignacionHeap(pos, "0");
+        } else {
+            String subArreglo = emitirReservaDimension(dimensiones, nivel + 1);
+            c3d.emitirAsignacionHeap(pos, subArreglo);
+        }
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, idx, idx, "1");
+        c3d.emitirGoto(lblInicio);
+        c3d.emitirEtiqueta(lblFin);
+        return base;
+    }
+
+    public String generarInstanciacionObjeto(NodoInstanciacionObjeto objeto) {
+        ContenedorC3D c3d = contexto.getC3d();
+        String inicioObjeto = c3d.nuevoTemporal();
+        c3d.emitirAsignacion(inicioObjeto, "H");
+
+        int tamano = 10;
+        Tipo tipoClase = contexto.getTablaSimbolos().buscarTipoCompuesto(objeto.getNombreClase());
+        if (tipoClase != null && tipoClase.getCampos() != null) {
+            tamano = Math.max(1, tipoClase.getCampos().size());
+        }
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", String.valueOf(tamano));
+
+        boolean tieneArgumentos = objeto.getArgumentos() != null && !objeto.getArgumentos().isEmpty();
+        boolean tieneConstructor = tieneArgumentos || contexto.getTablaSimbolos().tieneConstructor(objeto.getNombreClase());
+        if (tieneConstructor) {
+            List<Tipo> tiposParams = objeto.getConstructorResuelto() != null
+                    ? objeto.getConstructorResuelto().getParametros()
+                    : List.of();
+            String nombreCtor = contexto.resolverEtiquetaConstructor(objeto.getNombreClase(), tiposParams);
+            generarLlamada(nombreCtor, objeto.getArgumentos(), inicioObjeto, false);
+        }
+        return inicioObjeto;
     }
 
     public String generarTernario(NodoExpresionTernaria ternaria) {
         ContenedorC3D c3d = contexto.getC3d();
-        String cond = generarExpresion(ternaria.getCondicion());
-        String tRes = c3d.nuevoTemporal();
-        String lTrue = c3d.nuevaEtiqueta();
-        String lFalse = c3d.nuevaEtiqueta();
-        String lFin = c3d.nuevaEtiqueta();
+        String condicion = generarExpresion(ternaria.getCondicion());
+        String resultado = c3d.nuevoTemporal();
+        String verdadero = c3d.nuevaEtiqueta();
+        String falso = c3d.nuevaEtiqueta();
+        String fin = c3d.nuevaEtiqueta();
 
-        c3d.emitirIf(TipoOperadorC3D.IF_DIFERENTE, cond, "0", lTrue);
-        c3d.emitirGoto(lFalse);
+        c3d.emitirIf(TipoOperadorC3D.IF_DIFERENTE, condicion, "0", verdadero);
+        c3d.emitirGoto(falso);
 
-        c3d.emitirEtiqueta(lTrue);
-        String valTrue = generarExpresion(ternaria.getExpresionTrue());
-        c3d.emitirAsignacion(tRes, valTrue);
-        c3d.emitirGoto(lFin);
+        c3d.emitirEtiqueta(verdadero);
+        c3d.emitirAsignacion(resultado, generarExpresion(ternaria.getExpresionTrue()));
+        c3d.emitirGoto(fin);
 
-        c3d.emitirEtiqueta(lFalse);
-        String valFalse = generarExpresion(ternaria.getExpresionFalse());
-        c3d.emitirAsignacion(tRes, valFalse);
-        c3d.emitirEtiqueta(lFin);
+        c3d.emitirEtiqueta(falso);
+        c3d.emitirAsignacion(resultado, generarExpresion(ternaria.getExpresionFalse()));
+        c3d.emitirEtiqueta(fin);
 
-        return tRes;
+        return resultado;
+    }
+
+    public String generarLlamadaFuncion(NodoLlamadaFuncion llamada) {
+        boolean esMetodoPropio = llamada.isEsMetodoDeClaseActual()
+                || (llamada.getFuncionResuelta() == null && contexto.esMetodoDeThis(llamada.getNombreFuncion()));
+        if (esMetodoPropio) {
+            String receptor = contexto.leerVariable("this");
+            String claseObj = llamada.getClaseObjetivoResuelta() != null
+                    ? llamada.getClaseObjetivoResuelta()
+                    : contexto.obtenerNombreClaseThis();
+            List<Tipo> tiposParams = llamada.getFuncionResuelta() != null
+                    ? llamada.getFuncionResuelta().getParametros()
+                    : List.of();
+            String nombreDestino = (claseObj != null)
+                    ? contexto.resolverEtiquetaMetodo(claseObj, llamada.getNombreFuncion(), tiposParams)
+                    : llamada.getNombreFuncion();
+            return generarLlamada(nombreDestino, llamada.getArgumentos(), receptor, true);
+        }
+        return generarLlamada(llamada.getNombreFuncion(), llamada.getArgumentos(), null, true);
+    }
+
+    public String generarLlamadaMetodo(NodoLlamadaMetodo metodo) {
+        String receptor = generarExpresion(metodo.getEstructura());
+        String claseReceptora = metodo.getClaseObjetivoResuelta();
+        if (claseReceptora == null) {
+            Tipo tipoReceptor = contexto.resolverTipoEstructura(metodo.getEstructura());
+            if (tipoReceptor != null) {
+                claseReceptora = tipoReceptor.getNombreTipo();
+            }
+        }
+        List<Tipo> tiposParams = metodo.getMetodoResuelto() != null
+                ? metodo.getMetodoResuelto().getParametros()
+                : List.of();
+        String nombreDestino = (claseReceptora != null)
+                ? contexto.resolverEtiquetaMetodo(claseReceptora, metodo.getNombreMetodo(), tiposParams)
+                : metodo.getNombreMetodo();
+        return generarLlamada(nombreDestino, metodo.getArgumentos(), receptor, true);
+    }
+
+    private String generarLlamada(String nombre, List<NodoAST> argumentos, String receptor, boolean conRetorno) {
+        if (receptor != null) {
+            contexto.registrarTemporalActivo(receptor);
+        }
+        List<String> valores = evaluarArgumentos(argumentos);
+        int desplazamiento = contexto.calcularDesplazamientoTransicion();
+        int primerParametro = 2;
+        if (receptor != null) {
+            contexto.pasarParametro(desplazamiento + 2, receptor);
+            primerParametro = 3;
+        }
+        pasarArgumentos(valores, desplazamiento, primerParametro);
+        String retorno = contexto.realizarLlamadaSubrutina(nombre, desplazamiento, conRetorno);
+        if (receptor != null) {
+            contexto.desregistrarTemporalActivo(receptor);
+        }
+        return retorno;
+    }
+
+    private List<String> evaluarArgumentos(List<NodoAST> argumentos) {
+        List<String> evaluados = new ArrayList<>();
+        if (argumentos == null) return evaluados;
+        for (NodoAST argumento : argumentos) {
+            String valor = generarExpresion(argumento);
+            contexto.registrarTemporalActivo(valor);
+            evaluados.add(valor);
+        }
+        return evaluados;
+    }
+
+    private void pasarArgumentos(List<String> argumentos, int desplazamiento, int offsetInicial) {
+        if (argumentos == null) return;
+        for (int i = 0; i < argumentos.size(); i++) {
+            String valor = argumentos.get(i);
+            contexto.pasarParametro(desplazamiento + offsetInicial + i, valor);
+            contexto.desregistrarTemporalActivo(valor);
+        }
     }
 }
