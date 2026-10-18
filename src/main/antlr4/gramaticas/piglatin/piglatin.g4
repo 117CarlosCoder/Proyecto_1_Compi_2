@@ -148,7 +148,7 @@ TIPO_NUMERUS: 'numerus';
 TIPO_DECIMALIS: 'decimalis';
 TIPO_TEXTUM: 'textum';
 TIPO_LITTERA: 'littera';
-TIPO_BOOLEANUS: 'booleanus';
+TIPO_BOOLEANUS: 'booleanus' | 'bool';
 
 LIT_VERUM: 'verum';
 LIT_FALSUS: 'falsus';
