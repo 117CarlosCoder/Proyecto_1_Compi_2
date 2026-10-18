@@ -104,19 +104,6 @@ public class ComprobadorTipos {
         return Tipo.ERROR;
     }
 
-    public static Tipo mapearTipoPrimitivo(String lexema) {
-        if (lexema == null) return Tipo.ERROR;
-        return switch (lexema.toLowerCase().trim()) {
-            case "numerus", "entero", "int" -> Tipo.ENTERO;
-            case "decimalis", "flotante", "decimal", "double", "float" -> Tipo.DECIMAL;
-            case "littera", "caracter", "char" -> Tipo.CARACTER;
-            case "booleanus", "bool", "booleano", "boolean" -> Tipo.BOOLEANO;
-            case "textum", "cadena", "string" -> Tipo.CADENA;
-            case "void" -> Tipo.VOID;
-            default -> new Tipo(TipoBase.OBJETO_CLASE, lexema.trim());
-        };
-    }
-
     private static boolean esTipoReferencia(Tipo t) {
         return t.getBase() == TipoBase.OBJETO_CLASE ||
             t.getBase() == TipoBase.ESTRUCTURA ||

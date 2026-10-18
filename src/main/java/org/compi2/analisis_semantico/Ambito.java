@@ -53,10 +53,6 @@ public class Ambito {
         return this.tipoRetornoEsperado;
     }
 
-    public int getDesplazamientoActual() {
-        return this.contadorDesplazamiento != null ? this.contadorDesplazamiento.getActual() : 0;
-    }
-
     public int asignarDesplazamiento(int tamanoBytes) {
         return this.contadorDesplazamiento.asignar(tamanoBytes);
     }

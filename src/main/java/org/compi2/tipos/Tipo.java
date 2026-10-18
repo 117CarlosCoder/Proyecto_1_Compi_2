@@ -1,12 +1,14 @@
 package org.compi2.tipos;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ComprobadorTipos;
 
 import java.util.*;
 import java.util.function.Function;
 
 @Getter
+@RequiredArgsConstructor
 public class Tipo {
 
     public static final Tipo ENTERO = new Tipo(TipoBase.ENTERO);
@@ -47,16 +49,6 @@ public class Tipo {
             parametros != null ? parametros : Collections.emptyList(), tipoRetorno);
     }
 
-    public Tipo(TipoBase base, String nombreTipo, Tipo tipoComponente, int dimensiones,
-                List<Tipo> parametros, Tipo tipoRetorno) {
-        this.base = base;
-        this.nombreTipo = nombreTipo;
-        this.tipoComponente = tipoComponente;
-        this.dimensiones = dimensiones;
-        this.parametros = parametros;
-        this.tipoRetorno = tipoRetorno;
-    }
-
     public void agregarCampo(String nombre, Tipo tipo) {
         campos.put(nombre, tipo);
     }
@@ -92,27 +84,6 @@ public class Tipo {
         return -1;
     }
 
-    public int calcularTamanoEnHeap() {
-        boolean esCompuesto = base == TipoBase.OBJETO_CLASE || base == TipoBase.ESTRUCTURA;
-        return esCompuesto ? campos.size() : 1;
-    }
-
-    public static int calcularTamanoEnHeapArreglo(List<Integer> dims) {
-        if (dims == null || dims.isEmpty()) return 1;
-        int totalElementos = dims.stream().reduce(1, (a, b) -> a * b);
-        return 1 + dims.size() + totalElementos;
-    }
-
-    public static int calcularOffsetAplanado(List<Integer> indices, List<Integer> dims) {
-        if (indices == null || dims == null || indices.isEmpty()) return 0;
-        int offset = indices.get(0);
-        for (int k = 1; k < indices.size(); k++) {
-            int dimActual = k < dims.size() ? dims.get(k) : 1;
-            offset = offset * dimActual + indices.get(k);
-        }
-        return offset;
-    }
-
     public void agregarMetodo(String nombre, Tipo tipoFuncion) {
         metodos.computeIfAbsent(nombre, k -> new ArrayList<>()).add(tipoFuncion);
     }
@@ -140,10 +111,35 @@ public class Tipo {
         constructores.add(params != null ? new ArrayList<>(params) : Collections.emptyList());
     }
 
-    public boolean existeConstructor(List<Tipo> args) {
+    public List<Tipo> buscarConstructor(List<Tipo> args) {
         List<Tipo> listaArgs = args != null ? args : Collections.emptyList();
-        if (constructores.isEmpty() && listaArgs.isEmpty()) return true;
-        return buscarCoincidencia(constructores, listaArgs, Function.identity()) != null;
+        if (constructores.isEmpty() && listaArgs.isEmpty()) return Collections.emptyList();
+        return buscarCoincidencia(constructores, listaArgs, Function.identity());
+    }
+
+    public String nombreParaEtiqueta() {
+        if (base == null) return "void";
+        return switch (base) {
+            case BOOLEANO, CARACTER, ENTERO, DECIMAL, CADENA -> base.name().toLowerCase();
+            case VOID -> "void";
+            case ERROR -> "err";
+            case ARREGLO -> "arr" + dimensiones + "_" + (tipoComponente != null ? tipoComponente.nombreParaEtiqueta() : "void");
+            case OBJETO_CLASE -> "cls_" + (nombreTipo != null ? nombreTipo.replaceAll("[^a-zA-Z0-9_]", "_") : "anon");
+            case ESTRUCTURA -> "ref_" + (nombreTipo != null ? nombreTipo.replaceAll("[^a-zA-Z0-9_]", "_") : "anon");
+            case FUNCION -> "fn";
+        };
+    }
+
+    public static String unirTiposParametros(List<Tipo> parametros) {
+        if (parametros == null || parametros.isEmpty()) {
+            return "void";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parametros.size(); i++) {
+            if (i > 0) sb.append("_");
+            sb.append(parametros.get(i).nombreParaEtiqueta());
+        }
+        return sb.toString();
     }
 
 

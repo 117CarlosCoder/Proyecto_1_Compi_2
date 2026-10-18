@@ -46,6 +46,14 @@ public class TablaSimbolos {
         return catalogoTiposCompuestos.get(nombre);
     }
 
+    public Tipo resolverTipo(Tipo tipo) {
+        if (tipo == null) {
+            return null;
+        }
+        Tipo registrado = buscarTipoCompuesto(tipo.getNombreTipo());
+        return (registrado != null) ? registrado : tipo;
+    }
+
     public boolean existeTipoCompuesto(String nombre) {
         return catalogoTiposCompuestos.containsKey(nombre);
     }
@@ -64,12 +72,6 @@ public class TablaSimbolos {
 
     public Simbolo registrarClase(String nombre, Tipo tipoClase, int linea, int columna) {
         Simbolo s = new Simbolo(contadorId++, nombre, tipoClase, "clase", "Global", linea, columna, 0, lenguajeActual, archivoActual);
-        registroHistorico.add(s);
-        return s;
-    }
-
-    public Simbolo registrarCampoClase(String nombreClase, String nombreCampo, Tipo tipoCampo, int linea, int columna, int offsetEnClase) {
-        Simbolo s = new Simbolo(contadorId++, nombreCampo, tipoCampo, "campo_clase", "Clase_" + nombreClase, linea, columna, offsetEnClase, lenguajeActual, archivoActual);
         registroHistorico.add(s);
         return s;
     }
