@@ -1,4 +1,4 @@
-package org.compi2;
+package org.compi2.UI;
 
 import org.compi2.UI.arbol.PanelArbolProyecto;
 import org.compi2.UI.compilacion.TareaCompilacion;
@@ -6,6 +6,7 @@ import org.compi2.UI.consola.PanelConsola;
 import org.compi2.UI.editor.PanelEditorTexto;
 import org.compi2.UI.graficos.PanelImagenZoom;
 import org.compi2.UI.graficos.RenderizadorGraphviz;
+import org.compi2.UI.proyecto.AccionesProyecto;
 import org.compi2.UI.tablas.DialogoTabla;
 import org.compi2.UI.tablas.ModeloTablaErrores;
 import org.compi2.UI.tablas.ModeloTablaSimbolos;
@@ -74,6 +75,7 @@ public class VentanaPrincipal extends JFrame {
     private final JTextArea areaCodigoDot = new JTextArea("(Arbol disponible)");
     private final JTextArea areaCodigoC3D = new JTextArea("(Compila para generar el código C3D.)");
     private final JComboBox<String> comboSelectorArbol = new JComboBox<>();
+    private boolean actualizandoComboArbol = false;
     private final Map<String, String> mapaArbolesDot = new LinkedHashMap<>();
     private final JLabel etiquetaZoom = new JLabel("100%");
     private final JTabbedPane panelPestanas = new JTabbedPane();
@@ -85,6 +87,7 @@ public class VentanaPrincipal extends JFrame {
     private final JProgressBar barraProgreso = new JProgressBar();
 
     private final PanelArbolProyecto panelArbol;
+    private final AccionesProyecto accionesProyecto = new AccionesProyecto(this);
     private JSplitPane splitPrincipal;
     private boolean arbolVisible = true;
 
@@ -121,6 +124,7 @@ public class VentanaPrincipal extends JFrame {
         etiquetaZoom.setFont(FUENTE_UI);
         botonDetener.setEnabled(false);
         botonCompilar.addActionListener(this::accionCompilar);
+        botonDetener.addActionListener(e -> detenerEjecucion());
         panelArbol = new PanelArbolProyecto(this::cargarArchivoEnEditor);
         panelArbol.setAlGuardarArchivo(this::guardarArchivo);
         panelArbol.setAlEliminarArchivo(archivoEliminado -> {
@@ -142,7 +146,11 @@ public class VentanaPrincipal extends JFrame {
         comboSelectorArbol.setBackground(new Color(245, 248, 255));
         comboSelectorArbol.setForeground(new Color(20, 30, 45));
         comboSelectorArbol.setPreferredSize(new Dimension(320, 26));
-        comboSelectorArbol.addActionListener(e -> cambiarArbolSeleccionado());
+        comboSelectorArbol.addActionListener(e -> {
+            if (!actualizandoComboArbol) {
+                cambiarArbolSeleccionado();
+            }
+        });
 
         configurarPestanas();
         add(crearBarraSuperior(), BorderLayout.NORTH);
@@ -302,6 +310,13 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void accionCompilar(ActionEvent e) {
+        if (panelEditor.getTexto().trim().isEmpty()) {
+            File seleccionado = panelArbol.getArchivoSeleccionado();
+            if (seleccionado != null && seleccionado.exists() && !seleccionado.isDirectory()) {
+                cargarArchivoEnEditor(seleccionado);
+            }
+        }
+
         String codigo = panelEditor.getTexto().trim();
         if (codigo.isEmpty()) {
             actualizarEstado("⚠ Editor vacío. Escribe o abre un archivo primero.", COLOR_ROJO);
@@ -348,16 +363,24 @@ public class VentanaPrincipal extends JFrame {
             this.listaErrores.addAll(nuevosErrores);
 
         this.mapaArbolesDot.clear();
-        this.comboSelectorArbol.removeAllItems();
+        actualizandoComboArbol = true;
+        try {
+            this.comboSelectorArbol.removeAllItems();
+            if (mapaArboles != null && !mapaArboles.isEmpty()) {
+                this.mapaArbolesDot.putAll(mapaArboles);
+                for (String clave : mapaArboles.keySet()) {
+                    this.comboSelectorArbol.addItem(clave);
+                }
+                if (this.comboSelectorArbol.getItemCount() > 0) {
+                    this.comboSelectorArbol.setSelectedIndex(0);
+                }
+            }
+        } finally {
+            actualizandoComboArbol = false;
+        }
 
         if (mapaArboles != null && !mapaArboles.isEmpty()) {
-            this.mapaArbolesDot.putAll(mapaArboles);
-            for (String clave : mapaArboles.keySet()) {
-                this.comboSelectorArbol.addItem(clave);
-            }
-            if (this.comboSelectorArbol.getItemCount() > 0) {
-                this.comboSelectorArbol.setSelectedIndex(0);
-            }
+            cambiarArbolSeleccionado();
         } else {
             areaCodigoDot.setText("(Sin árbol disponible)");
             panelImagenZoom.setImagen(null);
@@ -398,7 +421,7 @@ public class VentanaPrincipal extends JFrame {
 
         JButton btnCopiar = crearBotonSecundario("📋 Copiar C3D", e -> {
             String c3d = areaCodigoC3D.getText();
-            if (c3d != null && !c3d.isBlank() && !c3d.startsWith("(Sin")) {
+            if (c3d != null && !c3d.isBlank() && !c3d.startsWith("(")) {
                 StringSelection ss = new StringSelection(c3d);
                 Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
                 actualizarEstado("📋 Código C3D copiado al portapapeles.", COLOR_VERDE);
@@ -418,7 +441,7 @@ public class VentanaPrincipal extends JFrame {
 
     private void exportarCodigoC() {
         String c3d = areaCodigoC3D.getText();
-        if (c3d == null || c3d.isBlank() || c3d.startsWith("(Sin")) {
+        if (c3d == null || c3d.isBlank() || c3d.startsWith("(")) {
             JOptionPane.showMessageDialog(this, "No hay código C3D para exportar.",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
@@ -473,7 +496,7 @@ public class VentanaPrincipal extends JFrame {
         mapaArbolesDot.clear();
         comboSelectorArbol.removeAllItems();
         areaCodigoDot.setText("(Árbol no disponible)");
-        areaCodigoC3D.setText("(Compila para generar el código C3D");
+        areaCodigoC3D.setText("(Compila para generar el código C3D.)");
         panelImagenZoom.setImagen(null);
         panelImagenZoom.setMensajeEstado("El árbol aparecerá aquí tras compilar");
     }
@@ -485,7 +508,7 @@ public class VentanaPrincipal extends JFrame {
 
     private void cargarArchivoEnEditor(File archivo) {
         try {
-            String texto = Files.readString(archivo.toPath(), StandardCharsets.UTF_8);
+            String texto = accionesProyecto.leerArchivo(archivo);
             archivoActual = archivo;
             panelEditor.setTexto(texto);
             if (tablaSimbolos != null) {
@@ -499,11 +522,10 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void abrirArchivo() {
-        JFileChooser ch = new JFileChooser(".");
-        ch.setFileFilter(new FileNameExtensionFilter("Archivos del Compilador (*.pig, *.y, *.z, *.txt)", "pig", "y",
-                "z", "txt"));
-        if (ch.showOpenDialog(this) == JFileChooser.APPROVE_OPTION)
-            cargarArchivoEnEditor(ch.getSelectedFile());
+        File seleccionado = accionesProyecto.seleccionarArchivo();
+        if (seleccionado != null) {
+            cargarArchivoEnEditor(seleccionado);
+        }
     }
 
     private void guardarArchivo() {
@@ -512,7 +534,7 @@ public class VentanaPrincipal extends JFrame {
             return;
         }
         try {
-            Files.writeString(archivoActual.toPath(), panelEditor.getTexto(), StandardCharsets.UTF_8);
+            accionesProyecto.guardarArchivo(archivoActual, panelEditor.getTexto());
             actualizarEstado("Guardado: " + archivoActual.getName(), COLOR_VERDE);
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(this, "Error al guardar: " + ex.getMessage(), "Error",
@@ -521,10 +543,9 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void guardarArchivoComo() {
-        JFileChooser ch = new JFileChooser(".");
-        ch.setFileFilter(new FileNameExtensionFilter("Archivos Pig Latin (*.pig)", "pig"));
-        if (ch.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-            archivoActual = ch.getSelectedFile();
+        File seleccionado = accionesProyecto.seleccionarArchivoParaGuardar();
+        if (seleccionado != null) {
+            archivoActual = seleccionado;
             guardarArchivo();
             etiquetaEditor.setText(" 📝 Editor — " + archivoActual.getName());
         }

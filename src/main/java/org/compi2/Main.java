@@ -1,5 +1,6 @@
 package org.compi2;
 
+import org.compi2.UI.VentanaPrincipal;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 

@@ -95,7 +95,7 @@ public class DialogoTabla extends JDialog {
                 datos[i] = new Object[]{
                     i + 1,
                     e.getTipo() != null ? e.getTipo().getEtiqueta() : "—",
-                    e.getOrigen() != null ? e.getOrigen() : "—",
+                    e.getUbicacionArchivo(),
                     e.getLinea(),
                     e.getColumna(),
                     e.getMensaje()

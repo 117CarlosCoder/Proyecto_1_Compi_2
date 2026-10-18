@@ -28,7 +28,7 @@ public class ModeloTablaErrores extends DefaultTableModel {
             addRow(new Object[]{
                 i++,
                 e.getTipo() != null ? e.getTipo().getEtiqueta() : "—",
-                e.getOrigen() != null ? e.getOrigen() : "—",
+                e.getUbicacionArchivo(),
                 e.getMensaje(),
                 e.getLinea(),
                 e.getColumna()
