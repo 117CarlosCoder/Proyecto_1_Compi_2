@@ -137,6 +137,9 @@ public class TareaCompilacion extends SwingWorker<Void, Void> {
         if (exito && resultadoCompilacion.getCodigoC3D() != null) {
             log("Código C3D : generado (ver pestaña \"Código C3D (C)\")");
         }
+        if (exito && resultadoCompilacion.getCodigoRiscV() != null) {
+            log("Assembler RISC-V : generado (ver pestaña \"Assembler RISC-V (.s)\")");
+        }
         if (!exito) {
             log("\nErrores");
             resultadoCompilacion.getErrores().forEach(err -> log(err.toString()));
@@ -205,6 +208,7 @@ public class TareaCompilacion extends SwingWorker<Void, Void> {
         ventanaPrincipal.notificarFinalizacion(
             exito, totalErrores, totalSimbolos, mapaArbolesDot,
             resultadoCompilacion.getCodigoC3D(),
+            resultadoCompilacion.getCodigoRiscV(),
             resultadoCompilacion.getTablaSimbolos(),
             resultadoCompilacion.getErrores());
     }

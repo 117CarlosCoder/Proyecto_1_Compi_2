@@ -38,7 +38,8 @@ public class VistaSintaxis extends PlainView {
                 "finis", "finis;", "interrumpe", "interrumpir", "perge", "verum", "falsus",
                 "entonces", "sino", "contrario", "elegir", "caso", "siempre", "mientras",
                 "hacer", "para", "romper", "continuar", "retornar", "verdadero", "falso",
-                "class", "public", "void", "new", "null", "if", "else", "switch", "case",
+                "class", "public", "private", "protected", "extends", "super", "this", "@override",
+                "void", "new", "null", "if", "else", "switch", "case",
                 "default", "for", "while", "do", "break", "continue", "return", "true", "false");
 
         agregar(COLOR_TYPE,
@@ -69,6 +70,7 @@ public class VistaSintaxis extends PlainView {
                     + "|>>|<<|->"
                     + "|\\+\\+|--|\\+=|-=|\\*=|/=|%="
                     + "|==|!=|<=|>=|&&|\\|\\|"
+                    + "|@[a-zA-Z_][a-zA-Z0-9_]*"
                     + "|[a-zA-Z_][a-zA-Z0-9_]*"
                     + "|\\d+(?:\\.\\d+)?"
                     + "|[{}()\\[\\];,.%:?<>]"
@@ -96,7 +98,7 @@ public class VistaSintaxis extends PlainView {
             return mapa;
 
         for (Simbolo s : simbolos) {
-            if (s.getNombre() == null)
+            if (s.getNombre() == null || PALABRAS_BASE.containsKey(s.getNombre().toLowerCase()))
                 continue;
             mapa.put(s.getNombre().toLowerCase(), colorSegunCategoria(s.getCategoria()));
         }

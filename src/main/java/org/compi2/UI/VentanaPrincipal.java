@@ -12,7 +12,8 @@ import org.compi2.UI.tablas.ModeloTablaErrores;
 import org.compi2.UI.tablas.ModeloTablaSimbolos;
 import org.compi2.UI.util.FuentesUi;
 import org.compi2.analisis_semantico.TablaSimbolos;
-import org.compi2.errores.ErrorCompilacion;
+import org.compi2.errores.ErrorCompilacion;     
+import org.compi2.riscv.SimuladorRiscV;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -74,6 +75,7 @@ public class VentanaPrincipal extends JFrame {
     private final PanelImagenZoom panelImagenZoom = new PanelImagenZoom();
     private final JTextArea areaCodigoDot = new JTextArea("(Arbol disponible)");
     private final JTextArea areaCodigoC3D = new JTextArea("(Compila para generar el código C3D.)");
+    private final JTextArea areaCodigoRiscV = new JTextArea("(Compila para generar el código Assembler RISC-V.)");
     private final JComboBox<String> comboSelectorArbol = new JComboBox<>();
     private boolean actualizandoComboArbol = false;
     private final Map<String, String> mapaArbolesDot = new LinkedHashMap<>();
@@ -84,6 +86,7 @@ public class VentanaPrincipal extends JFrame {
     private final JLabel etiquetaEditor = new JLabel(" 📝 Editor de Código");
     private final JButton botonCompilar = crearBoton("▶  Compilar", COLOR_VERDE, Color.WHITE);
     private final JButton botonDetener = crearBoton("⏹  Detener", COLOR_ROJO, Color.WHITE);
+    private final JButton botonEjecutarRiscV = crearBoton("▶ Ejecutar Assembler", COLOR_VERDE, Color.WHITE);
     private final JProgressBar barraProgreso = new JProgressBar();
 
     private final PanelArbolProyecto panelArbol;
@@ -98,7 +101,7 @@ public class VentanaPrincipal extends JFrame {
     private File archivoActual;
 
     public VentanaPrincipal() {
-        super("💻 Proyecto 1");
+        super("💻 Proyecto 2");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(1260, 780);
         setMinimumSize(new Dimension(960, 580));
@@ -121,10 +124,20 @@ public class VentanaPrincipal extends JFrame {
         areaCodigoC3D.setSelectionColor(new Color(40, 80, 130));
         areaCodigoC3D.setMargin(new Insets(10, 12, 10, 12));
 
+        areaCodigoRiscV.setEditable(false);
+        areaCodigoRiscV.setFont(new Font("Consolas", Font.PLAIN, 13));
+        areaCodigoRiscV.setBackground(new Color(20, 24, 35));
+        areaCodigoRiscV.setForeground(new Color(230, 240, 255));
+        areaCodigoRiscV.setCaretColor(new Color(255, 198, 0));
+        areaCodigoRiscV.setSelectedTextColor(Color.WHITE);
+        areaCodigoRiscV.setSelectionColor(new Color(40, 80, 130));
+        areaCodigoRiscV.setMargin(new Insets(10, 12, 10, 12));
+
         etiquetaZoom.setFont(FUENTE_UI);
         botonDetener.setEnabled(false);
         botonCompilar.addActionListener(this::accionCompilar);
         botonDetener.addActionListener(e -> detenerEjecucion());
+        botonEjecutarRiscV.addActionListener(e -> ejecutarAssemblerRiscV());
         panelArbol = new PanelArbolProyecto(this::cargarArchivoEnEditor);
         panelArbol.setAlGuardarArchivo(this::guardarArchivo);
         panelArbol.setAlEliminarArchivo(archivoEliminado -> {
@@ -175,6 +188,7 @@ public class VentanaPrincipal extends JFrame {
         panelPestanas.addTab("📊 Tabla de Símbolos", new JScrollPane(crearTablaEstilizada(modeloSimbolos)));
         panelPestanas.addTab("⚠ Errores", new JScrollPane(crearTablaEstilizada(modeloErrores)));
         panelPestanas.addTab("Código C3D (C)", crearPanelC3D());
+        panelPestanas.addTab("⚙ Assembler RISC-V (.s)", crearPanelRiscV());
 
         JTabbedPane subAst = new JTabbedPane();
         subAst.addTab("Gráfico Visual", crearPanelGraficoAst());
@@ -187,7 +201,7 @@ public class VentanaPrincipal extends JFrame {
         b.setFloatable(false);
         b.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
 
-        b.add(crearBotonSecundario("💻 Proyecto 1", e -> toggleArbol()));
+        b.add(crearBotonSecundario("💻 Proyecto 2", e -> toggleArbol()));
         b.addSeparator(new Dimension(10, 0));
 
         b.add(botonCompilar);
@@ -356,6 +370,13 @@ public class VentanaPrincipal extends JFrame {
     public void notificarFinalizacion(boolean exito, int totalErrores, int totalSimbolos,
             Map<String, String> mapaArboles, String codigoC3D,
             TablaSimbolos nuevaTabla, List<ErrorCompilacion> nuevosErrores) {
+        notificarFinalizacion(exito, totalErrores, totalSimbolos, mapaArboles, codigoC3D, null,
+                nuevaTabla, nuevosErrores);
+    }
+
+    public void notificarFinalizacion(boolean exito, int totalErrores, int totalSimbolos,
+            Map<String, String> mapaArboles, String codigoC3D, String codigoRiscV,
+            TablaSimbolos nuevaTabla, List<ErrorCompilacion> nuevosErrores) {
         restablecerControles();
         this.tablaSimbolos = (nuevaTabla != null) ? nuevaTabla : new TablaSimbolos();
         this.listaErrores.clear();
@@ -391,6 +412,13 @@ public class VentanaPrincipal extends JFrame {
             areaCodigoC3D.setCaretPosition(0);
         } else {
             areaCodigoC3D.setText("(Sin código C3D generado debido a errores de compilación)");
+        }
+
+        if (codigoRiscV != null && !codigoRiscV.isBlank()) {
+            areaCodigoRiscV.setText(codigoRiscV);
+            areaCodigoRiscV.setCaretPosition(0);
+        } else {
+            areaCodigoRiscV.setText("(Sin código Assembler RISC-V generado)");
         }
 
         if (exito) {
@@ -439,6 +467,40 @@ public class VentanaPrincipal extends JFrame {
         return panel;
     }
 
+    private JPanel crearPanelRiscV() {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        JPanel barraAcciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 5));
+        barraAcciones.setBackground(new Color(32, 40, 54));
+
+        JLabel titulo = new JLabel("Assembler RISC-V (Estándar Venus)");
+        titulo.setFont(FUENTE_UI_BOLD);
+        titulo.setForeground(new Color(225, 235, 250));
+        barraAcciones.add(titulo);
+
+        barraAcciones.add(Box.createHorizontalStrut(16));
+        barraAcciones.add(botonEjecutarRiscV);
+
+        JButton btnCopiar = crearBotonSecundario("📋 Copiar Assembler (Venus)", e -> {
+            String asm = areaCodigoRiscV.getText();
+            if (asm != null && !asm.isBlank() && !asm.startsWith("(")) {
+                StringSelection ss = new StringSelection(asm);
+                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
+                actualizarEstado("📋 Assembler RISC-V copiado al portapapeles.", COLOR_VERDE);
+            } else {
+                actualizarEstado("No hay código Assembler RISC-V.", COLOR_ROJO);
+            }
+        });
+        barraAcciones.add(btnCopiar);
+
+        JButton btnExportar = crearBotonSecundario("💾 Exportar archivo .s", e -> exportarAssemblerRiscV());
+        barraAcciones.add(btnExportar);
+
+        panel.add(barraAcciones, BorderLayout.NORTH);
+        panel.add(new JScrollPane(areaCodigoRiscV), BorderLayout.CENTER);
+        return panel;
+    }
+
     private void exportarCodigoC() {
         String c3d = areaCodigoC3D.getText();
         if (c3d == null || c3d.isBlank() || c3d.startsWith("(")) {
@@ -472,6 +534,60 @@ public class VentanaPrincipal extends JFrame {
         }
     }
 
+    private void ejecutarAssemblerRiscV() {
+        String codigo = areaCodigoRiscV.getText();
+        if (codigo == null || codigo.isBlank() || codigo.startsWith("(")) {
+            actualizarEstado("No hay código Assembler RISC-V para ejecutar.", COLOR_ROJO);
+            return;
+        }
+
+        String nombre = (archivoActual != null) ? archivoActual.getName() : "programa.s";
+
+        panelPestanas.setSelectedIndex(0);
+        try {
+            new SimuladorRiscV().lanzarEnTerminalExterna(codigo, nombre);
+            panelConsola.agregarTexto(
+                    "\n>> Se abrió la ventana de terminal RISC-V para ejecución interactiva (" + nombre + ").\n");
+            actualizarEstado("▶ Terminal RISC-V abierta para ejecución interactiva.", COLOR_VERDE);
+        } catch (Exception ex) {
+            panelConsola.agregarTexto("\nError al abrir la terminal RISC-V: " + ex.getMessage() + "\n");
+            actualizarEstado("Error al abrir la terminal RISC-V.", COLOR_ROJO);
+        }
+    }
+
+    private void exportarAssemblerRiscV() {
+        String asm = areaCodigoRiscV.getText();
+        if (asm == null || asm.isBlank() || asm.startsWith("(")) {
+            JOptionPane.showMessageDialog(this, "No hay código Assembler RISC-V para exportar.",
+                    "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Guardar código Assembler RISC-V (.s)");
+        fc.setSelectedFile(new File("programa_venus.s"));
+        fc.setFileFilter(new FileNameExtensionFilter("Archivos Assembler (*.s)", "s"));
+
+        int res = fc.showSaveDialog(this);
+        if (res == JFileChooser.APPROVE_OPTION) {
+            File destino = fc.getSelectedFile();
+            if (!destino.getName().toLowerCase().endsWith(".s")) {
+                destino = new File(destino.getAbsolutePath() + ".s");
+            }
+            try {
+                Files.writeString(destino.toPath(), asm, StandardCharsets.UTF_8);
+                actualizarEstado("💾 Assembler RISC-V guardado exitosamente en: " + destino.getName(), COLOR_VERDE);
+                JOptionPane.showMessageDialog(this,
+                        "Archivo .s generado exitosamente en:\n" + destino.getAbsolutePath(), "Exportación Exitosa",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException ex) {
+                actualizarEstado("Error al guardar archivo .s: " + ex.getMessage(), COLOR_ROJO);
+                JOptionPane.showMessageDialog(this, "Error al escribir el archivo: " + ex.getMessage(), "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
     private void restablecerControles() {
         botonCompilar.setEnabled(true);
         botonDetener.setEnabled(false);
@@ -497,6 +613,7 @@ public class VentanaPrincipal extends JFrame {
         comboSelectorArbol.removeAllItems();
         areaCodigoDot.setText("(Árbol no disponible)");
         areaCodigoC3D.setText("(Compila para generar el código C3D.)");
+        areaCodigoRiscV.setText("(Compila para generar el código Assembler RISC-V.)");
         panelImagenZoom.setImagen(null);
         panelImagenZoom.setMensajeEstado("El árbol aparecerá aquí tras compilar");
     }
