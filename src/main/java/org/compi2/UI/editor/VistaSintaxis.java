@@ -87,7 +87,7 @@ public class VistaSintaxis extends PlainView {
     }
 
     public static void limpiarColoreado() {
-        coloreadoActivo = false;
+        coloreadoActivo = true;
         mapaSimbolos = new HashMap<>();
         comentariosBloque = new ArrayList<>();
     }
