@@ -1,0 +1,1343 @@
+@startuml
+!pragma layout smetana
+
+skinparam classAttributeIconSize 0
+skinparam defaultFontName "Segoe UI"
+skinparam fontSize 10
+skinparam roundCorner 6
+skinparam shadowing false
+skinparam packageBackgroundColor #F8F9FA
+skinparam packageBorderColor #6C757D
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #343A40
+skinparam classHeaderBackgroundColor #E9ECEF
+
+title
+Diagrama de Clases Completo - Compilador Multilenguaje Fase 2 (PigLatin, Y, Zetariano -> C3D -> RISC-V)
+end title
+
+package "org.compi2" {
+    class Main {
+        {static} +main(args: String[]): void
+    }
+}
+
+package "org.compi2.UI" {
+    class VentanaPrincipal {
+        -panelEditor: PanelEditorTexto
+        -panelConsola: PanelConsola
+        -modeloSimbolos: ModeloTablaSimbolos
+        -modeloErrores: ModeloTablaErrores
+        -panelImagenZoom: PanelImagenZoom
+        -panelArbol: PanelArbolProyecto
+        -accionesProyecto: AccionesProyecto
+        -areaCodigoDot: JTextArea
+        -areaCodigoC3D: JTextArea
+        -areaCodigoRiscV: JTextArea
+        -comboSelectorArbol: JComboBox<String>
+        -mapaArbolesDot: Map<String, String>
+        -panelPestanas: JTabbedPane
+        -etiquetaEstado: JLabel
+        -botonCompilar: JButton
+        -botonDetener: JButton
+        -botonEjecutarRiscV: JButton
+        -barraProgreso: JProgressBar
+        -tablaSimbolos: TablaSimbolos
+        -listaErrores: List<ErrorCompilacion>
+        -ejecucionCancelada: AtomicBoolean
+        -tareaActual: TareaCompilacion
+        -archivoActual: File
+        +VentanaPrincipal()
+        -accionCompilar(e: ActionEvent): void
+        -detenerEjecucion(): void
+        +notificarFinalizacion(exito: boolean, totalErrores: int, totalSimbolos: int, ts: TablaSimbolos, err: List<ErrorCompilacion>, dot: String, c3d: String, riscv: String, arboles: Map<String, String>): void
+        -crearPanelC3D(): JPanel
+        -crearPanelRiscV(): JPanel
+        -exportarCodigoC(): void
+        -ejecutarAssemblerRiscV(): void
+        -exportarAssemblerRiscV(): void
+        -cambiarArbolSeleccionado(): void
+        -renderizarDotEnImagen(dot: String): void
+        -cargarArchivoEnEditor(archivo: File): void
+        -abrirArchivo(): void
+        -guardarArchivo(): void
+        -guardarArchivoComo(): void
+        -guardarImagenAst(): void
+        -guardarCodigoDot(): void
+    }
+}
+
+package "org.compi2.UI.proyecto" {
+    class AccionesProyecto {
+        -padre: Component
+        +AccionesProyecto(padre: Component)
+        +crearArchivo(dirDestino: File): File
+        +crearCarpeta(dirDestino: File): File
+        +renombrar(seleccionado: File): File
+        +eliminar(seleccionado: File): boolean
+        -eliminarRecursivo(f: File): boolean
+        +seleccionarArchivo(): File
+        +seleccionarArchivoParaGuardar(): File
+        +leerArchivo(archivo: File): String
+        +guardarArchivo(archivo: File, contenido: String): void
+    }
+}
+
+package "org.compi2.UI.util" {
+    class FuentesUi {
+        {static} +ui(estilo: int, tamano: int): Font
+        {static} +mono(estilo: int, tamano: int): Font
+    }
+}
+
+package "org.compi2.UI.editor" {
+    class NumeroLinea {
+        -editor: Object
+        -digitosMinimos: int
+        +NumeroLinea(editor: Object)
+    }
+
+    class VistaSintaxis {
+        {static} +COLOR_KEYWORD: Color
+        {static} +COLOR_TYPE: Color
+        {static} +COLOR_STRING: Color
+        {static} +COLOR_NUMBER: Color
+        {static} +COLOR_SECTION: Color
+        {static} +COLOR_FUNCTION: Color
+        {static} +COLOR_VARIABLE: Color
+        {static} +limpiarColoreado(): void
+        {static} +actualizarSimbolosSemanticos(simbolos: List<Simbolo>, codigo: String): void
+    }
+
+    class EditorKitPlantilla {
+        +getViewFactory(): Object
+        +getContentType(): String
+    }
+
+    class PanelEditorTexto {
+        +PanelEditorTexto()
+        +getTexto(): String
+        +setTexto(texto: String): void
+        +actualizarColoresSimbolos(simbolos: List<Simbolo>, codigo: String): void
+        +limpiar(): void
+    }
+}
+
+package "org.compi2.UI.consola" {
+    class PanelConsola {
+        +PanelConsola()
+        +agregarTexto(texto: String): void
+        +limpiar(): void
+    }
+}
+
+package "org.compi2.UI.arbol" {
+    class PanelArbolProyecto {
+        -arbol: JTree
+        -modeloArbol: DefaultTreeModel
+        -etiquetaRaiz: JLabel
+        -carpetaRaiz: File
+        -accionesProyecto: AccionesProyecto
+        +PanelArbolProyecto(alAbrirArchivo: Consumer<File>)
+        +setCarpetaRaiz(carpeta: File): void
+        +refrescar(): void
+        +crearNuevoProyecto(): void
+        +crearNuevoArchivo(): void
+        +crearNuevaCarpeta(): void
+        +descargarOExportarProyectoZip(): void
+        +seleccionarCarpetaRaiz(): void
+    }
+
+    class NodoArchivo {
+        +archivo: File
+        +NodoArchivo(archivo: File)
+        +toString(): String
+    }
+
+    class RendererNodoArchivo {
+        +getTreeCellRendererComponent(tree: JTree, val: Object, sel: boolean, exp: boolean, leaf: boolean, row: int, focus: boolean): Component
+    }
+}
+
+package "org.compi2.UI.graficos" {
+    class GeneradorDot {
+        {static} +generar(arbol: Object, titulo: String): String
+        {static} +generarProyectoCompleto(arbolMain: Object, nomMain: String, imports: Map<String, ArchivoFuente>): String
+    }
+
+    class RenderizadorGraphviz {
+        {static} +renderizarDotAImagen(codigoDot: String): BufferedImage
+    }
+
+    class PanelImagenZoom {
+        -imagen: BufferedImage
+        -escala: double
+        -origenX: int
+        -origenY: int
+        +PanelImagenZoom()
+        +setImagen(img: BufferedImage): void
+        +zoomIn(): void
+        +zoomOut(): void
+        +restablecerZoom(): void
+        +getEscalaPorcentaje(): int
+    }
+}
+
+package "org.compi2.UI.tablas" {
+    class ModeloTablaErrores {
+        +ModeloTablaErrores()
+        +actualizarErrores(errores: List<ErrorCompilacion>): void
+        +isCellEditable(r: int, c: int): boolean
+    }
+
+    class ModeloTablaSimbolos {
+        +ModeloTablaSimbolos()
+        +actualizarSimbolos(simbolos: List<Simbolo>): void
+        +isCellEditable(r: int, c: int): boolean
+    }
+
+    class DialogoTabla {
+        +DialogoTabla(prop: Frame, tit: String, cols: String[], datos: Object[][])
+        {static} +mostrarSimbolos(prop: Frame, simbolos: List<Simbolo>): void
+        {static} +mostrarErrores(prop: Frame, errores: List<ErrorCompilacion>): void
+    }
+}
+
+package "org.compi2.UI.compilacion" {
+    class TareaCompilacion {
+        -codigoFuente: String
+        -nombreArchivo: String
+        -archivoActual: File
+        -resultadoCompilacion: ResultadoCompilacion
+        +TareaCompilacion(codigo: String, nombre: String, archivo: File)
+        +cancelar(): void
+        +getResultadoCompilacion(): ResultadoCompilacion
+        +getCodigoDot(): String
+    }
+}
+
+package "org.compi2.orquestador" {
+    enum TipoLenguaje {
+        PIG_LATIN
+        Y
+        ZETARIANO
+        DESCONOCIDO
+        {static} +desdeExtension(ext: String): TipoLenguaje
+    }
+
+    class ArchivoFuente {
+        -identificador: String
+        -rutaAbsoluta: Path
+        -nombreArchivo: String
+        -nombreBase: String
+        -lenguaje: TipoLenguaje
+        -contenido: String
+        -parseTree: ParseTree
+        -ast: NodoAST
+        +esPigLatin(): boolean
+        +esY(): boolean
+        +esZetariano(): boolean
+        {static} +normalizarSeparadores(s: String): String
+    }
+
+    class ResolucionImport {
+        -rutaRelativa: String
+        -nombreArchivo: String
+        -nombreBase: String
+        -lenguaje: TipoLenguaje
+        -error: String
+        +ResolucionImport(rutaRel: String, nomArch: String, nomBase: String, len: TipoLenguaje, err: String)
+        +esValido(): boolean
+    }
+
+    class GestorImports {
+        {static} +resolverRutaImport(importTexto: String): ResolucionImport
+        {static} +cargarArchivo(res: ResolucionImport, dirBase: Path, virtuales: Map<String, String>, err: List<ErrorCompilacion>, l: int, c: int, orig: String): ArchivoFuente
+        {static} +validarNombreClaseZetariano(arch: ArchivoFuente, astZ: NodoUnidadCompilacionZ, err: List<ErrorCompilacion>): void
+    }
+
+    class ResultadoCompilacion {
+        -exitoso: boolean
+        -astPrincipal: NodoPrograma
+        -archivosCompilados: Map<String, ArchivoFuente>
+        -tablaSimbolos: TablaSimbolos
+        -errores: List<ErrorCompilacion>
+        -parseTreePrincipal: ParseTree
+        -codigoC3D: String
+        -codigoRiscV: String
+        -contenedorC3D: ContenedorC3D
+        +tieneErrores(): boolean
+        +getErrores(): List<ErrorCompilacion>
+        +generarReporteErrores(): String
+    }
+
+    class OrquestadorCompilacion {
+        +compilarArchivo(archivo: File): ResultadoCompilacion
+        +compilarArchivo(rutaArchivo: Path): ResultadoCompilacion
+        +compilarEnMemoria(codigoPig: String, archivosVirtuales: Map<String, String>): ResultadoCompilacion
+        +compilarEnMemoria(nombreArchivo: String, codigo: String, archivosVirtuales: Map<String, String>): ResultadoCompilacion
+        +compilar(nombre: String, codigo: String, dirBase: Path, virtuales: Map<String, String>): ResultadoCompilacion
+        -compilarPigLatin(nombrePig: String, codigoPig: String, dirBase: Path, virtuales: Map<String, String>): ResultadoCompilacion
+        -compilarModulo(nombreArchivo: String, codigo: String, lenguaje: TipoLenguaje): ResultadoCompilacion
+        -parsearPigLatin(nombre: String, codigo: String, errores: List<ErrorCompilacion>): ParseTree
+        -parsearY(nombre: String, codigo: String, errores: List<ErrorCompilacion>): ParseTree
+        -parsearZetariano(nombre: String, codigo: String, errores: List<ErrorCompilacion>): ParseTree
+        -procesarImportaciones(astPrincipal: NodoPrograma, dirBase: Path, virtuales: Map<String, String>, nomOrig: String, err: List<ErrorCompilacion>): Map<String, ArchivoFuente>
+        -procesarFase(archivos: Map<String, ArchivoFuente>, tabla: TablaSimbolos, err: List<ErrorSemantico>, acc: BiConsumer<ModuloSemantico, TablaSimbolos>): void
+        -enlazarHerencia(archivos: Map<String, ArchivoFuente>, tabla: TablaSimbolos, err: List<ErrorSemantico>): void
+        -generarCodigoC3D(res: ResultadoCompilacion, astPrincipal: NodoPrograma, archivos: Map<String, ArchivoFuente>, tabla: TablaSimbolos): void
+        -recopilarTodasLasFunciones(archivos: Map<String, ArchivoFuente>): List<NodoFuncion>
+    }
+}
+
+package "org.compi2.errores" {
+    enum TipoError {
+        LEXICO
+        SINTACTICO
+        SEMANTICO
+        -etiqueta: String
+        +getEtiqueta(): String
+    }
+
+    abstract class ErrorCompilacion {
+        #tipo: TipoError
+        #mensaje: String
+        #origen: String
+        #linea: int
+        #columna: int
+        +getTipo(): TipoError
+        +getMensaje(): String
+        +getOrigen(): String
+        +getLinea(): int
+        +getColumna(): int
+        +toString(): String
+    }
+
+    class CustomErrorListener {
+        -tipoFijo: TipoError
+        -origen: String
+        -errores: List<ErrorCompilacion>
+        +syntaxError(recognizer: Object, offendingSymbol: Object, line: int, charPos: int, msg: String, e: Object): void
+        +getErrores(): List<ErrorCompilacion>
+        +tieneErrores(): boolean
+    }
+}
+
+package "org.compi2.tipos" {
+    enum TipoBase {
+        BOOLEANO
+        CARACTER
+        ENTERO
+        DECIMAL
+        CADENA
+        VOID
+        NULO
+        ERROR
+        ARREGLO
+        OBJETO_CLASE
+        ESTRUCTURA
+        FUNCION
+        -jerarquia: int
+        +getJerarquia(): int
+        +esNumerico(): boolean
+    }
+
+    enum Visibilidad {
+        PUBLIC
+        PRIVATE
+        PROTECTED
+        DEFAULT
+        {static} +desdeTexto(texto: String): Visibilidad
+        +nivelAcceso(): int
+        +reduceVisibilidadRespectoA(padre: Visibilidad): boolean
+    }
+
+    class Tipo {
+        {static} +ENTERO: Tipo
+        {static} +DECIMAL: Tipo
+        {static} +CARACTER: Tipo
+        {static} +BOOLEANO: Tipo
+        {static} +CADENA: Tipo
+        {static} +VOID: Tipo
+        {static} +NULO: Tipo
+        {static} +ERROR: Tipo
+        -base: TipoBase
+        -nombreTipo: String
+        -tipoComponente: Tipo
+        -dimensiones: int
+        -parametros: List<Tipo>
+        -tipoRetorno: Tipo
+        -campos: Map<String, Tipo>
+        -visibilidadCampos: Map<String, Visibilidad>
+        -claseDeclaranteCampos: Map<String, String>
+        -metodos: Map<String, List<Tipo>>
+        -constructores: List<List<Tipo>>
+        -visibilidadConstructores: List<Visibilidad>
+        -clasePadre: String
+        -tipoPadre: Tipo
+        -visibilidad: Visibilidad
+        -claseDeclarante: String
+        -padreEnlazado: boolean
+        +agregarCampo(nom: String, t: Tipo, vis: Visibilidad, claseDecl: String): void
+        +buscarCampo(nom: String): Tipo
+        +obtenerVisibilidadCampo(nom: String): Visibilidad
+        +obtenerClaseDeclaranteCampo(nom: String): String
+        +obtenerOffsetCampo(nom: String): int
+        +agregarMetodo(nom: String, tipoFn: Tipo): void
+        +obtenerSobrecargasMetodo(nom: String): List<Tipo>
+        +buscarMetodo(nom: String, args: List<Tipo>): Tipo
+        +buscarMetodoEnAncestros(nom: String, params: List<Tipo>): Tipo
+        +obtenerClaseDeclaranteMetodo(nom: String, params: List<Tipo>): String
+        +resolverTiposConstructores(ts: TablaSimbolos): void
+        +resolverTiposMetodos(ts: TablaSimbolos): void
+        +agregarConstructor(params: List<Tipo>, vis: Visibilidad): void
+        +buscarConstructor(args: List<Tipo>): List<Tipo>
+        +obtenerVisibilidadConstructor(paramsCtor: List<Tipo>): Visibilidad
+        +esSubclaseDe(posibleAncestro: String, ts: TablaSimbolos): boolean
+        +enlazarPadre(padre: Tipo): void
+        +nombreParaEtiqueta(): String
+        +esMismoTipo(otro: Tipo): boolean
+    }
+}
+
+package "org.compi2.analisis_semantico" {
+    class ErrorSemantico {
+        -archivo: String
+        +ErrorSemantico(msg: String, ambito: String, linea: int, col: int)
+        +ErrorSemantico(msg: String, ambito: String, arch: String, linea: int, col: int)
+        +getAmbito(): String
+        +toString(): String
+    }
+
+    class Simbolo {
+        -id: int
+        -nombre: String
+        -tipo: Tipo
+        -categoria: String
+        -ambito: String
+        -linea: int
+        -columna: int
+        -desplazamiento: int
+        -lenguaje: String
+        -archivoOrigen: String
+        +getId(): int
+        +getNombre(): String
+        +getTipo(): Tipo
+        +getCategoria(): String
+        +getAmbito(): String
+        +getLinea(): int
+        +getColumna(): int
+        +getDesplazamiento(): int
+        +getLenguaje(): String
+        +getArchivoOrigen(): String
+    }
+
+    class ContadorDesplazamiento {
+        -actual: int
+        +ContadorDesplazamiento()
+        +ContadorDesplazamiento(inicio: int)
+        +asignar(tamanoBytes: int): int
+        +getActual(): int
+    }
+
+    class Ambito {
+        -padre: Ambito
+        -nombreAmbito: String
+        -nivel: int
+        -tablaSimbolos: Map<String, Simbolo>
+        -contadorDesplazamiento: ContadorDesplazamiento
+        -esBucle: boolean
+        -esSwitch: boolean
+        -tipoRetornoEsperado: Tipo
+        +estaEnBucle(): boolean
+        +estaEnSwitch(): boolean
+        +obtenerTipoRetornoEsperado(): Tipo
+        +getDesplazamientoActual(): int
+        +asignarDesplazamiento(tamano: int): int
+        +insertar(s: Simbolo): boolean
+        +buscar(nombre: String): Simbolo
+        +buscarEnAmbitoActual(nombre: String): Simbolo
+    }
+
+    class ComprobadorTipos {
+        {static} +esCompatibleAsignacion(destino: Tipo, origen: Tipo): boolean
+        {static} +esCompatibleAsignacion(destino: Tipo, origen: Tipo, ts: TablaSimbolos): boolean
+        {static} +resolverSuma(t1: Tipo, t2: Tipo): Tipo
+        {static} +resolverAritmetica(t1: Tipo, t2: Tipo, op: String): Tipo
+        {static} +resolverModulo(t1: Tipo, t2: Tipo): Tipo
+        {static} +resolverRelacional(t1: Tipo, t2: Tipo, op: String): Tipo
+        {static} +resolverLogico(t1: Tipo, t2: Tipo, op: String): Tipo
+        {static} +resolverNegacionLogica(t: Tipo): Tipo
+        {static} +resolverNegacionAritmetica(t: Tipo): Tipo
+    }
+
+    class TablaSimbolos {
+        -pilaAmbitos: Stack<Ambito>
+        -pilaClases: Stack<String>
+        -registroHistorico: List<Simbolo>
+        -catalogoTiposCompuestos: Map<String, Tipo>
+        -catalogoFuncionesGlobales: Map<String, Simbolo>
+        -contadorId: int
+        -lenguajeActual: String
+        -archivoActual: String
+        +reiniciar(): void
+        +entrarClase(nombreClase: String): void
+        +salirClase(): void
+        +obtenerClaseActual(): String
+        +estaEnConstructor(): boolean
+        +esAccesible(vis: Visibilidad, claseDecl: String): boolean
+        +tieneCicloHerencia(nombreClase: String): boolean
+        +setContextoOrigen(len: String, arch: String): void
+        +registrarTipoCompuesto(tipo: Tipo): boolean
+        +buscarTipoCompuesto(nombre: String): Tipo
+        +resolverTipo(tipo: Tipo): Tipo
+        +existeTipoCompuesto(nombre: String): boolean
+        +registrarEstructura(nom: String, t: Tipo, l: int, c: int): Simbolo
+        +registrarCampoEstructura(nomE: String, nomC: String, t: Tipo, l: int, c: int, off: int): Simbolo
+        +registrarClase(nom: String, t: Tipo, l: int, c: int): Simbolo
+        +registrarMetodoClase(nomC: String, nomM: String, t: Tipo, l: int, c: int): Simbolo
+        +registrarConstructorClase(nomC: String, t: Tipo, l: int, c: int): Simbolo
+        +registrarFuncionGlobal(nomF: String, t: Tipo, l: int, c: int): Simbolo
+        +buscarFuncionGlobal(nom: String): Simbolo
+        +abrirAmbito(nombre: String): void
+        +abrirAmbito(nombre: String, reiniciar: boolean): void
+        +abrirAmbitoBucle(nombre: String): void
+        +abrirAmbitoSwitch(nombre: String): void
+        +abrirAmbitoFuncion(nombre: String, ret: Tipo): void
+        +cerrarAmbito(): void
+        +registrarSimbolo(nom: String, t: Tipo, cat: String, l: int, c: int): Simbolo
+        +buscarSimbolo(nom: String): Simbolo
+        +obtenerTodosLosSimbolos(): List<Simbolo>
+        +generarReporteTexto(): String
+    }
+
+    class YSangriaToken {
+        -pilaSangrias: Stack<Integer>
+        -colaTokens: Queue<Object>
+        -ultimoTipoEmitido: int
+        +nextToken(): Object
+        +getLine(): int
+        +getCharPositionInLine(): int
+    }
+}
+
+package "org.compi2.constructores_ast" {
+    class UtilidadesAst {
+        {static} ~binaria(izq: NodoAST, op: Token, der: NodoAST): NodoOperacionBinaria
+        {static} ~binaria(izq: NodoAST, opTexto: String, tok: Token, der: NodoAST): NodoOperacionBinaria
+        {static} ~literalEntero(terminal: TerminalNode): NodoLiteral
+        {static} ~literalDecimal(terminal: TerminalNode): NodoLiteral
+        {static} ~literalCadena(terminal: TerminalNode): NodoLiteral
+        {static} ~literalCaracter(terminal: TerminalNode): NodoLiteral
+    }
+
+    class ConstructorAstPigLatin {
+        +visitPrograma(ctx: Object): NodoAST
+        +visitDeclaracionTipada(ctx: Object): NodoAST
+        +visitDeclaracionDinamica(ctx: Object): NodoAST
+        +visitDeclaracionArreglo(ctx: Object): NodoAST
+        +visitSentenciaSi(ctx: Object): NodoAST
+        +visitSentenciaDum(ctx: Object): NodoAST
+        +visitSentenciaFacere(ctx: Object): NodoAST
+        +visitSentenciaPer(ctx: Object): NodoAST
+        +visitSentenciaImprimir(ctx: Object): NodoAST
+        +visitSentenciaLectura(ctx: Object): NodoAST
+        +visitExpresionBinaria(ctx: Object): NodoAST
+        -obtenerTipo(ctx: Object): Tipo
+    }
+
+    class ConstructorAstY {
+        +visitPrograma(ctx: Object): NodoAST
+        +visitDeclaracionStruct(ctx: Object): NodoAST
+        +visitDeclaracionFuncion(ctx: Object): NodoAST
+        +visitSentenciaSi(ctx: Object): NodoAST
+        +visitSentenciaMientras(ctx: Object): NodoAST
+        +visitSentenciaHacerMientras(ctx: Object): NodoAST
+        +visitSentenciaPara(ctx: Object): NodoAST
+        +visitSentenciaElegir(ctx: Object): NodoAST
+        +visitSentenciaImprimir(ctx: Object): NodoAST
+        -obtenerTipo(ctx: Object): Tipo
+    }
+
+    class ConstructorAstZetariano {
+        +visitUnidadCompilacion(ctx: Object): NodoAST
+        +visitDeclaracionClase(ctx: Object): NodoAST
+        +visitDeclaracionConstructor(ctx: Object): NodoAST
+        +visitDeclaracionMetodo(ctx: Object): NodoAST
+        +visitLlamadaSuper(ctx: Object): NodoAST
+        +visitSentenciaIf(ctx: Object): NodoAST
+        +visitSentenciaWhile(ctx: Object): NodoAST
+        +visitSentenciaFor(ctx: Object): NodoAST
+        +visitSentenciaSwitch(ctx: Object): NodoAST
+        +visitInstanciacionObjeto(ctx: Object): NodoAST
+        -obtenerTipo(ctx: Object): Tipo
+    }
+}
+
+package "org.compi2.ast" {
+    interface NodoAST {
+        +comprobar(ts: TablaSimbolos, errores: List<ErrorSemantico>): Tipo
+    }
+
+    interface ModuloSemantico {
+        +registrarEnTablaSimbolos(ts: TablaSimbolos, errores: List<ErrorSemantico>): void
+        +comprobarCuerpos(ts: TablaSimbolos, errores: List<ErrorSemantico>): void
+    }
+}
+
+package "org.compi2.ast.expresiones" {
+    class NodoLiteral {
+        -valor: Object
+        -tipo: Tipo
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoIdentificador {
+        -nombre: String
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoOperacionBinaria {
+        -izq: NodoAST
+        -operador: String
+        -der: NodoAST
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoOperacionUnaria {
+        -expresion: NodoAST
+        -operador: String
+        -esPrefijo: boolean
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoLlamadaFuncion {
+        -nombreFuncion: String
+        -argumentos: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoLlamadaMetodo {
+        -objeto: NodoAST
+        -nombreMetodo: String
+        -argumentos: List<NodoAST>
+        -linea: int
+        -columna: int
+        -tiposParametrosResueltos: List<Tipo>
+        -claseObjetivoResuelta: String
+        -esLlamadaSuper: boolean
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoAccesoMiembro {
+        -estructuraOClase: NodoAST
+        -nombreMiembro: String
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoAccesoArreglo {
+        -arreglo: NodoAST
+        -indices: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoInstanciacionObjeto {
+        -nombreClase: String
+        -argumentos: List<NodoAST>
+        -linea: int
+        -columna: int
+        -tiposParametrosResueltos: List<Tipo>
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoInstanciacionArreglo {
+        -tipoBase: Tipo
+        -dimensiones: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoListaValores {
+        -valores: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoExpresionTernaria {
+        -condicion: NodoAST
+        -ramaVerdadera: NodoAST
+        -ramaFalsa: NodoAST
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoExpresionLectura {
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+}
+
+package "org.compi2.ast.sentencias" {
+    class Parametro {
+        -nombre: String
+        -tipo: Tipo
+        -linea: int
+        -columna: int
+        +getNombre(): String
+        +getTipo(): Tipo
+    }
+
+    class NodoDeclaracion {
+        -nombre: String
+        -tipoDeclarado: Tipo
+        -valorInicial: NodoAST
+        -dimensionesDeclaradas: List<NodoAST>
+        -visibilidad: Visibilidad
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoAsignacion {
+        -destino: NodoAST
+        -valor: NodoAST
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoIf {
+        -condicion: NodoAST
+        -bloqueVerdadero: List<NodoAST>
+        -bloqueFalso: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoWhile {
+        -condicion: NodoAST
+        -cuerpo: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoDoWhile {
+        -cuerpo: List<NodoAST>
+        -condicion: NodoAST
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoFor {
+        -inicializacion: NodoAST
+        -condicion: NodoAST
+        -paso: NodoAST
+        -cuerpo: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class CasoSwitch {
+        -valorCaso: NodoAST
+        -instrucciones: List<NodoAST>
+        -linea: int
+        -columna: int
+    }
+
+    class NodoSwitch {
+        -expresionControl: NodoAST
+        -casos: List<CasoSwitch>
+        -casoDefecto: List<NodoAST>
+        -tipoControl: Tipo
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoFuncion {
+        -nombre: String
+        -parametros: List<Parametro>
+        -tipoRetorno: Tipo
+        -cuerpo: List<NodoAST>
+        -esMetodo: boolean
+        -claseContenedora: String
+        -visibilidad: Visibilidad
+        -tieneOverride: boolean
+        -linea: int
+        -columna: int
+        +registrarEnTablaSimbolos(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+        +comprobarCuerpo(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoClase {
+        -nombre: String
+        -clasePadre: String
+        -visibilidad: Visibilidad
+        -campos: List<NodoDeclaracion>
+        -constructores: List<NodoConstructor>
+        -metodos: List<NodoFuncion>
+        -linea: int
+        -columna: int
+        -claseRegistrada: boolean
+        -herenciaEnlazada: boolean
+        -tipoClaseCache: Tipo
+        +registrarEnTablaSimbolos(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+        +enlazarHerencia(ts: TablaSimbolos, err: List<ErrorSemantico>, mapaClases: Map<String, NodoClase>): void
+        +comprobarCuerpos(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +aFunciones(): List<NodoFuncion>
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoConstructor {
+        -nombreClase: String
+        -visibilidad: Visibilidad
+        -parametros: List<Parametro>
+        -cuerpo: List<NodoAST>
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoLlamadaSuper {
+        -argumentos: List<NodoAST>
+        -clasePadreResuelta: String
+        -constructorResuelto: Tipo
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoEstructura {
+        -nombre: String
+        -campos: LinkedHashMap<String, Tipo>
+        -linea: int
+        -columna: int
+        -registradaEnTabla: boolean
+        -tipoEstructuraCache: Tipo
+        +registrarEnTablaSimbolos(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class InfoImport {
+        -ruta: String
+        -linea: int
+        -columna: int
+    }
+
+    class NodoPrograma {
+        -importaciones: List<String>
+        -importacionesDetalladas: List<InfoImport>
+        -declaracionesGlobales: List<NodoAST>
+        -instruccionesMaior: List<NodoAST>
+        +agregarImport(ruta: String, l: int, c: int): void
+        +agregarDeclaracionGlobal(decl: NodoAST): void
+        +agregarInstruccionMaior(inst: NodoAST): void
+        +registrarEnTablaSimbolos(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +comprobarCuerpos(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoProgramaY {
+        -estructuras: List<NodoEstructura>
+        -funciones: List<NodoFuncion>
+        +agregarEstructura(est: NodoEstructura): void
+        +agregarFuncion(fn: NodoFuncion): void
+        +registrarEnTablaSimbolos(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +comprobarCuerpos(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoUnidadCompilacionZ {
+        -clases: List<NodoClase>
+        +agregarClase(clase: NodoClase): void
+        +aFunciones(): List<NodoFuncion>
+        +registrarEnTablaSimbolos(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +enlazarHerencia(ts: TablaSimbolos, err: List<ErrorSemantico>, mapaClases: Map<String, NodoClase>): void
+        +comprobarCuerpos(ts: TablaSimbolos, err: List<ErrorSemantico>): void
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoBreak {
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoContinue {
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoRetorno {
+        -expresion: NodoAST
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoImprimir {
+        -expresiones: List<NodoAST>
+        -conSaltoLinea: boolean
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+
+    class NodoLectura {
+        -destino: NodoAST
+        -linea: int
+        -columna: int
+        +comprobar(ts: TablaSimbolos, err: List<ErrorSemantico>): Tipo
+    }
+}
+
+package "org.compi2.c3d" {
+    enum TipoOperadorC3D {
+        SUMA
+        RESTA
+        MULTIPLICACION
+        DIVISION
+        DIVISION_ENTERA
+        MODULO
+        MENOS_UNARIO
+        ASIGNACION
+        ETIQUETA
+        GOTO
+        IF_IGUAL
+        IF_DIFERENTE
+        IF_MENOR
+        IF_MENOR_IGUAL
+        IF_MAYOR
+        IF_MAYOR_IGUAL
+        ACCESO_STACK
+        ASIGNACION_STACK
+        ACCESO_HEAP
+        ASIGNACION_HEAP
+        ACCESO_BUFFER
+        ASIGNACION_BUFFER
+        PRINT_INT
+        PRINT_DOUBLE
+        PRINT_CHAR
+        READ_STR
+        -simbolo: String
+        +getSimbolo(): String
+    }
+
+    class Cuarteta {
+        -operador: TipoOperadorC3D
+        -arg1: String
+        -arg2: String
+        -resultado: String
+        +toCodigoC(): String
+        +toFormatoCuarteta(): String
+        +toString(): String
+    }
+
+    class GestorTemporales {
+        -contador: int
+        +nuevoTemporal(): String
+        +generarDeclaracionC(): String
+        +reiniciar(): void
+    }
+
+    class GestorEtiquetas {
+        -contador: int
+        +nuevaEtiqueta(): String
+        +reiniciar(): void
+    }
+
+    enum TipoRutinaRiscV {
+        READ_DECIMAL
+        DECIMAL_TO_HEAP
+    }
+
+    class RangoRutinaRiscV <<record>> {
+        +tipo: TipoRutinaRiscV
+        +inicioInclusive: int
+        +finExclusive: int
+        +arg: String
+        +resultado: String
+    }
+
+    enum AccionCuartetaRiscV {
+        ESCALAR_ARG1_X10000
+        ESCALAR_ARG2_X10000
+        MUL_DECIMAL
+        DIV_DECIMAL
+    }
+
+    class ContenedorC3D {
+        -cuartetas: List<Cuarteta>
+        -gestorTemporales: GestorTemporales
+        -gestorEtiquetas: GestorEtiquetas
+        -rutinasRiscVPorInicio: Map<Integer, RangoRutinaRiscV>
+        -accionesRiscVPorCuarteta: Map<Integer, EnumSet<AccionCuartetaRiscV>>
+        +emitir(c: Cuarteta): void
+        +nuevoTemporal(): String
+        +nuevaEtiqueta(): String
+        +emitirAsignacion(res: String, arg1: String): void
+        +emitirOperacion(op: TipoOperadorC3D, res: String, a1: String, a2: String): void
+        +emitirEtiqueta(etiqueta: String): void
+        +emitirGoto(etiqueta: String): void
+        +emitirIf(opRel: TipoOperadorC3D, a1: String, a2: String, etq: String): void
+        +emitirAccesoStack(tempRes: String, pos: String): void
+        +emitirAsignacionStack(pos: String, val: String): void
+        +emitirAccesoHeap(tempRes: String, pos: String): void
+        +emitirAsignacionHeap(pos: String, val: String): void
+        +emitirPrintInt(val: String): void
+        +emitirPrintDouble(val: String): void
+        +emitirPrintChar(val: String): void
+        +emitirAccesoBuffer(tempRes: String, pos: String): void
+        +emitirAsignacionBuffer(pos: String, val: String): void
+        +registrarRutinaRiscV(rango: RangoRutinaRiscV): void
+        +obtenerRutinaRiscVEnInicio(idx: int): RangoRutinaRiscV
+        +marcarAccionRiscV(idx: int, acc: AccionCuartetaRiscV): void
+        +obtenerAccionesRiscV(idx: int): Set<AccionCuartetaRiscV>
+        +generarCodigoC(indent: String): String
+        +limpiar(): void
+    }
+
+    class PlantillaC {
+        {static} +generarCodigoCompleto(cont: ContenedorC3D, codigoMain: String): String
+    }
+
+    class GeneradorC3D {
+        -contexto: ContextoC3D
+        -generadorExpresiones: GeneradorExpresiones
+        -tipoRetornoActual: Tipo
+        +GeneradorC3D(tablaSimbolos: TablaSimbolos)
+        +compilarAMain(instrucciones: List<NodoAST>): String
+        +compilarConFunciones(funciones: List<NodoFuncion>, main: List<NodoAST>): String
+        +resolverNombreFuncionC3D(fn: NodoFuncion): String
+        +generarFuncion(funcion: NodoFuncion): void
+        +generarSentencias(instrucciones: List<NodoAST>): void
+        +generarSentencia(nodo: NodoAST): void
+        +generarExpresion(nodo: NodoAST): String
+        -generarDeclaracion(decl: NodoDeclaracion): void
+        -generarAsignacion(asig: NodoAsignacion): void
+        -generarAsignacionArreglo(acc: NodoAccesoArreglo, expr: NodoAST): void
+        -generarAsignacionCampo(acc: NodoAccesoMiembro, expr: NodoAST): void
+        -generarLectura(lectura: NodoLectura): void
+        -generarImprimir(imp: NodoImprimir): void
+        -generarIf(nodoIf: NodoIf): void
+        -generarSwitch(nodoSwitch: NodoSwitch): void
+        -generarWhile(nodoWhile: NodoWhile): void
+        -generarDoWhile(nodoDoWhile: NodoDoWhile): void
+        -generarFor(nodoFor: NodoFor): void
+        -generarRetorno(retorno: NodoRetorno): void
+        -generarLlamadaSuper(llamadaSuper: NodoLlamadaSuper): void
+    }
+}
+
+package "org.compi2.c3d.generadores" {
+    class SitioLlamada <<record>> {
+        +id: int
+        +etiquetaRetorno: String
+    }
+
+    class InfoDespachadorVirtual <<record>> {
+        +claseBase: String
+        +nombreMetodo: String
+        +tiposParams: List<Tipo>
+    }
+
+    class RutinasC3D {
+        -c3d: ContenedorC3D
+        ~emitirPrintStr(punteroHeap: String): void
+        ~emitirReadNum(destino: String): void
+        ~emitirReadStr(): String
+        ~emitirConcatStrStr(p1: String, p2: String): String
+        ~emitirConcatStrNum(p1: String, num: String, esDecimal: boolean): String
+        ~emitirConcatNumStr(num: String, p2: String, esDecimal: boolean): String
+        ~emitirNumeroAHeap(num: String, esDecimal: boolean): String
+    }
+
+    class ContextoC3D {
+        -c3d: ContenedorC3D
+        -tablaSimbolos: TablaSimbolos
+        -rutinas: RutinasC3D
+        -etiquetasBreak: Deque<String>
+        -etiquetasContinue: Deque<String>
+        -offsetsLocales: Map<String, Integer>
+        -tiposLocales: Map<String, Tipo>
+        -funcionActual: String
+        -offsetMaximo: int
+        -contadorLlamadas: int
+        -sitiosLlamadaPorFuncion: Map<String, List<SitioLlamada>>
+        -temporalesActivos: Set<String>
+        -despachadoresVirtualesRegistrados: Set<InfoDespachadorVirtual>
+        -idsClases: Map<String, Integer>
+        +leerVariable(nombre: String): String
+        +escribirVariable(nombre: String, valor: String, escalarADecimal: boolean): void
+        +aplicarIncremento(nombre: String, esInc: boolean, esPrefijo: boolean): String
+        +leerHeap(base: String, offset: String): String
+        +escribirHeap(base: String, offset: String, valor: String, escalarADecimal: boolean): void
+        +pasarParametro(offsetStack: int, valor: String, escalarADecimal: boolean): void
+        +realizarLlamadaSubrutina(nombreFn: String, desp: int, conRetorno: boolean): String
+        +emitirDespachadorRetorno(nombreFn: String): void
+        +resolverEtiquetaConstructor(nombreClase: String, params: List<Tipo>): String
+        +resolverEtiquetaMetodo(nombreClase: String, nombreMetodo: String, params: List<Tipo>): String
+        +obtenerIdClase(nombreClase: String): int
+        +tieneSobrescriturasEnSubclase(claseBase: String, metodo: String, params: List<Tipo>): boolean
+        +realizarLlamadaVirtual(claseBase: String, metodo: String, params: List<Tipo>, desp: int, conRet: boolean): String
+        +emitirDespachadoresVirtuales(): void
+        +asignarOffsetsLocales(insts: List<NodoAST>, offsetBase: int): int
+    }
+
+    class GeneradorExpresiones {
+        -contexto: ContextoC3D
+        +generarExpresion(nodo: NodoAST): String
+        +generarLiteral(lit: NodoLiteral): String
+        +generarIdentificador(id: NodoIdentificador): String
+        +generarOperacionUnaria(unaria: NodoOperacionUnaria): String
+        +generarOperacionBinaria(bin: NodoOperacionBinaria): String
+        +emitirRelacional(opRel: TipoOperadorC3D, izq: String, der: String, tIzq: Tipo, tDer: Tipo): String
+        +generarAccesoArreglo(accArr: NodoAccesoArreglo): String
+        +generarAccesoMiembro(accM: NodoAccesoMiembro): String
+        +generarListaValores(lista: NodoListaValores): String
+        +generarInstanciacionArreglo(instArr: NodoInstanciacionArreglo): String
+        +generarInstanciacionObjeto(instObj: NodoInstanciacionObjeto): String
+        +generarTernario(ternaria: NodoExpresionTernaria): String
+        +generarLlamadaFuncion(llamada: NodoLlamadaFuncion): String
+        +generarLlamadaMetodo(metodo: NodoLlamadaMetodo): String
+        +generarLlamadaVirtual(claseBase: String, metodo: String, params: List<Tipo>, args: List<NodoAST>, rec: String, conRet: boolean): String
+        +generarLlamada(nom: String, args: List<NodoAST>, rec: String, conRet: boolean, params: List<Tipo>): String
+    }
+}
+
+package "org.compi2.riscv" {
+    class GeneradorRiscV {
+        {static} +TAMANO_STACK_BYTES: int = 65536
+        {static} +TAMANO_HEAP_BYTES: int = 65536
+        {static} +TAMANO_BUFFER_STR_BYTES: int = 1024
+        {static} +ESCALA_PUNTO_FIJO: double = 10000.0
+        {static} +generarCodigo(contenedor: ContenedorC3D): String
+        +generar(contenedor: ContenedorC3D): String
+        -aplicarEscalamientoOperandos(sb: StringBuilder, acc: Set<AccionCuartetaRiscV>): void
+        -cargarOperando(sb: StringBuilder, op: String, regDestino: String): void
+        -guardarResultado(sb: StringBuilder, res: String, regOrigen: String): void
+        -calcularMaximoIndiceTemporal(cont: ContenedorC3D, cuartetas: List<Cuarteta>): int
+        -generarSubrutinaPrintDecimal(): String
+    }
+
+    class Instruccion <<record>> {
+        +mnem: String
+        +args: String[]
+        +lineaOriginal: String
+    }
+
+    class MemOp <<record>> {
+        +reg: int
+        +offset: int
+    }
+
+    class SimuladorRiscV {
+        {static} +LIMITE_INSTRUCCIONES_DEFAULT: int = 5000000
+        -registros: int[]
+        -paginasMemoria: byte[][]
+        -etiquetasDatos: Map<String, Integer>
+        -etiquetasTexto: Map<String, Integer>
+        -instrucciones: List<Instruccion>
+        -pc: int
+        -pasosEjecutados: long
+        -limiteInstrucciones: int
+        -detenido: boolean
+        -finalizado: boolean
+        -procesoExterno: Process
+        +SimuladorRiscV()
+        {static} +ejecutarCodigo(codigoRiscV: String): String
+        {static} +ejecutarCodigo(codigoRiscV: String, proveedorEntrada: Supplier<String>): String
+        {static} +ejecutarCodigo(codigoRiscV: String, salidaConsola: Consumer<String>): void
+        +lanzarEnTerminalExterna(codigoRiscV: String, nombreArchivo: String): Process
+        +detener(): void
+        +ejecutar(codigoRiscV: String, salidaConsola: Consumer<String>): void
+        +ejecutarMotorIntegrado(codigoRiscV: String): void
+        +cargarCodigo(codigoRiscV: String): void
+        -ejecutarInstrucciones(): void
+        -procesarEcall(): void
+        +leerByte(direccion: int): byte
+        +escribirByte(direccion: int, valor: byte): void
+        +leerWord(direccion: int): int
+        +escribirWord(direccion: int, valor: int): void
+        +reiniciarEstado(): void
+    }
+}
+
+' ============================================================================
+' RELACIONES DE HERENCIA, IMPLEMENTACIÓN, COMPOSICIÓN Y DEPENDENCIA
+' ============================================================================
+
+Main ..> VentanaPrincipal : inicia
+Main ..> RenderizadorGraphviz : silencia loggers
+
+VentanaPrincipal o-- PanelEditorTexto
+VentanaPrincipal o-- PanelConsola
+VentanaPrincipal o-- PanelArbolProyecto
+VentanaPrincipal o-- PanelImagenZoom
+VentanaPrincipal o-- AccionesProyecto
+VentanaPrincipal o-- ModeloTablaSimbolos
+VentanaPrincipal o-- ModeloTablaErrores
+VentanaPrincipal o-- TareaCompilacion : ejecuta asincronamente
+VentanaPrincipal ..> RenderizadorGraphviz : genera graficos
+VentanaPrincipal ..> DialogoTabla : despliega modales
+VentanaPrincipal ..> SimuladorRiscV : ejecuta Assembler RV32IM
+
+PanelArbolProyecto *-- NodoArchivo
+PanelArbolProyecto *-- RendererNodoArchivo
+PanelArbolProyecto o-- AccionesProyecto
+
+PanelEditorTexto o-- EditorKitPlantilla
+PanelEditorTexto o-- NumeroLinea
+EditorKitPlantilla ..> VistaSintaxis : crea vista
+VistaSintaxis ..> Simbolo : resalta segun tipo
+
+TareaCompilacion ..> OrquestadorCompilacion : invoca compilacion
+TareaCompilacion ..> GeneradorDot : genera representacion DOT
+TareaCompilacion o-- ResultadoCompilacion : almacena
+
+OrquestadorCompilacion ..> GestorImports : resuelve dependencias
+OrquestadorCompilacion ..> TablaSimbolos : mantiene contexto unificado
+OrquestadorCompilacion ..> ConstructorAstPigLatin : construye AST PigLatin
+OrquestadorCompilacion ..> ConstructorAstY : construye AST Y
+OrquestadorCompilacion ..> ConstructorAstZetariano : construye AST Zetariano
+OrquestadorCompilacion ..> GeneradorC3D : genera codigo intermedio C3D
+OrquestadorCompilacion ..> GeneradorRiscV : traduce C3D a RISC-V
+OrquestadorCompilacion ..> ResultadoCompilacion : empaqueta reporte
+
+GestorImports *-- ResolucionImport
+GestorImports ..> ArchivoFuente : carga y valida
+ArchivoFuente o-- TipoLenguaje
+ArchivoFuente o-- NodoAST : almacena AST raiz
+ResultadoCompilacion o-- ContenedorC3D
+ResultadoCompilacion o-- TablaSimbolos
+ResultadoCompilacion o-- ArchivoFuente
+ResultadoCompilacion o-- ErrorCompilacion
+
+ConstructorAstPigLatin ..> UtilidadesAst
+ConstructorAstY ..> UtilidadesAst
+ConstructorAstZetariano ..> UtilidadesAst
+
+TablaSimbolos o-- Ambito : pila de ambitos
+TablaSimbolos o-- Simbolo : registro historico
+TablaSimbolos o-- Tipo : catalogo compuesto
+Ambito o-- Simbolo : mapa local
+Ambito o-- ContadorDesplazamiento : offsets
+Simbolo o-- Tipo
+
+Tipo o-- TipoBase
+Tipo o-- Visibilidad
+Tipo o-- Tipo : tipoPadre / tipoComponente / tipoRetorno / campos
+
+ErrorCompilacion o-- TipoError
+CustomErrorListener o-- ErrorCompilacion : recolecta
+ErrorSemantico --|> ErrorCompilacion
+
+ModuloSemantico --|> NodoAST
+NodoPrograma ..|> ModuloSemantico
+NodoProgramaY ..|> ModuloSemantico
+NodoUnidadCompilacionZ ..|> ModuloSemantico
+
+NodoPrograma *-- InfoImport
+NodoPrograma o-- NodoAST : declaraciones / sentencias MAIOR
+NodoProgramaY o-- NodoEstructura
+NodoProgramaY o-- NodoFuncion
+NodoUnidadCompilacionZ o-- NodoClase
+
+NodoClase o-- Visibilidad
+NodoClase o-- NodoDeclaracion : campos
+NodoClase o-- NodoConstructor : constructores
+NodoClase o-- NodoFuncion : metodos
+NodoConstructor o-- Visibilidad
+NodoConstructor o-- Parametro
+NodoConstructor o-- NodoLlamadaSuper
+NodoFuncion o-- Visibilidad
+NodoFuncion o-- Parametro
+NodoDeclaracion o-- Visibilidad
+NodoDeclaracion o-- Tipo
+Parametro o-- Tipo
+NodoSwitch *-- CasoSwitch
+
+NodoLiteral ..|> NodoAST
+NodoIdentificador ..|> NodoAST
+NodoOperacionBinaria ..|> NodoAST
+NodoOperacionUnaria ..|> NodoAST
+NodoLlamadaFuncion ..|> NodoAST
+NodoLlamadaMetodo ..|> NodoAST
+NodoAccesoMiembro ..|> NodoAST
+NodoAccesoArreglo ..|> NodoAST
+NodoInstanciacionObjeto ..|> NodoAST
+NodoInstanciacionArreglo ..|> NodoAST
+NodoListaValores ..|> NodoAST
+NodoExpresionTernaria ..|> NodoAST
+NodoExpresionLectura ..|> NodoAST
+
+NodoDeclaracion ..|> NodoAST
+NodoAsignacion ..|> NodoAST
+NodoIf ..|> NodoAST
+NodoWhile ..|> NodoAST
+NodoDoWhile ..|> NodoAST
+NodoFor ..|> NodoAST
+NodoSwitch ..|> NodoAST
+NodoFuncion ..|> NodoAST
+NodoClase ..|> NodoAST
+NodoConstructor ..|> NodoAST
+NodoLlamadaSuper ..|> NodoAST
+NodoEstructura ..|> NodoAST
+NodoBreak ..|> NodoAST
+NodoContinue ..|> NodoAST
+NodoRetorno ..|> NodoAST
+NodoImprimir ..|> NodoAST
+NodoLectura ..|> NodoAST
+
+GeneradorC3D *-- ContextoC3D
+GeneradorC3D *-- GeneradorExpresiones
+GeneradorC3D ..> PlantillaC : genera C compilable
+ContextoC3D *-- RutinasC3D
+ContextoC3D *-- SitioLlamada
+ContextoC3D *-- InfoDespachadorVirtual
+ContextoC3D o-- ContenedorC3D
+ContextoC3D o-- TablaSimbolos
+GeneradorExpresiones o-- ContextoC3D
+RutinasC3D o-- ContenedorC3D
+
+ContenedorC3D *-- Cuarteta
+ContenedorC3D *-- GestorTemporales
+ContenedorC3D *-- GestorEtiquetas
+ContenedorC3D *-- RangoRutinaRiscV
+ContenedorC3D *-- TipoRutinaRiscV
+ContenedorC3D *-- AccionCuartetaRiscV
+Cuarteta o-- TipoOperadorC3D
+
+GeneradorRiscV ..> ContenedorC3D : traduce cuartetas y metadatos
+SimuladorRiscV *-- Instruccion
+SimuladorRiscV *-- MemOp
+
+ModeloTablaSimbolos o-- Simbolo
+ModeloTablaErrores o-- ErrorCompilacion
+
+@enduml
+

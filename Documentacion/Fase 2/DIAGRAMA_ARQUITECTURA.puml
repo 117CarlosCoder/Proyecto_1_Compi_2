@@ -1,0 +1,413 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+
+skinparam defaultFontName "Segoe UI"
+skinparam fontSize 10
+skinparam roundCorner 6
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #343A40
+    HeaderBackgroundColor #E9ECEF
+}
+
+title
+<b>Diagrama de Arquitectura Completo — Compilador Multilenguaje (Fase 2)</b>
+<i>Incluye la totalidad de capas, paquetes, clases, interfaces, records, enumeraciones y analizadores ANTLR4 del proyecto</i>
+end title
+
+' ============================================================================
+' CAPA 1: INTERFAZ GRÁFICA DE USUARIO (UI / IDE)
+' ============================================================================
+package "CAPA 1: Interfaz Gráfica de Usuario (IDE Swing)" #E8F4FD {
+
+    package "org.compi2" #BBDEFB {
+        class Main <<Entry Point>> {
+            + main(args: String[]): void
+        }
+    }
+
+    package "org.compi2.UI" #BBDEFB {
+        class VentanaPrincipal <<JFrame Principal>> {
+            Editor, Consola, Pestañas C3D/RISC-V,
+            Visor AST, Tablas y Barra de Herramientas
+        }
+    }
+
+    package "org.compi2.UI.compilacion" #E3F2FD {
+        class TareaCompilacion <<SwingWorker>> {
+            Ejecución asíncrona del pipeline
+            de compilación y generación DOT
+        }
+    }
+
+    package "org.compi2.UI.editor" #E3F2FD {
+        class PanelEditorTexto <<JPanel>>
+        class EditorKitPlantilla <<StyledEditorKit>>
+        class VistaSintaxis <<PlainView>>
+        class NumeroLinea <<JPanel>>
+    }
+
+    package "org.compi2.UI.arbol" #E3F2FD {
+        class PanelArbolProyecto <<JPanel>>
+        class "PanelArbolProyecto.NodoArchivo" as NodoArchivo <<Inner Class>>
+        class "PanelArbolProyecto.RendererNodoArchivo" as RendererNodoArchivo <<Inner Class>>
+    }
+
+    package "org.compi2.UI.proyecto" #E3F2FD {
+        class AccionesProyecto <<Helper CRUD Archivos>>
+    }
+
+    package "org.compi2.UI.consola" #E3F2FD {
+        class PanelConsola <<JPanel>>
+    }
+
+    package "org.compi2.UI.graficos" #E3F2FD {
+        class GeneradorDot <<AST/ParseTree a DOT>>
+        class RenderizadorGraphviz <<DOT a BufferedImage>>
+        class PanelImagenZoom <<Visor Interactivo>>
+    }
+
+    package "org.compi2.UI.tablas" #E3F2FD {
+        class DialogoTabla <<JDialog Modal>>
+        class ModeloTablaSimbolos <<DefaultTableModel>>
+        class ModeloTablaErrores <<DefaultTableModel>>
+    }
+
+    package "org.compi2.UI.util" #E3F2FD {
+        class FuentesUi <<Tipografías UI/Mono>>
+    }
+}
+
+' ============================================================================
+' CAPA 2: ORQUESTACIÓN Y FRONT-END LÉXICO / SINTÁCTICO (ANTLR4)
+' ============================================================================
+package "CAPA 2: Orquestación Multilenguaje y Análisis Léxico-Sintáctico" #FFF8E1 {
+
+    package "org.compi2.orquestador" #FFE082 {
+        class OrquestadorCompilacion <<Facade / Pipeline>> {
+            Coordina Parseo, Imports, 3 Pasadas
+            Semánticas, C3D y Assembler RISC-V
+        }
+        class GestorImports <<Resolución .y / .z>>
+        class "GestorImports.ResolucionImport" as ResolucionImport <<Inner Class>>
+        class ArchivoFuente <<Unidad de Compilación>>
+        class ResultadoCompilacion <<DTO Reporte Global>>
+        enum TipoLenguaje {
+            PIG_LATIN
+            Y
+            ZETARIANO
+            DESCONOCIDO
+        }
+    }
+
+    package "org.compi2.errores" #FFECB3 {
+        class CustomErrorListener <<ANTLR BaseErrorListener>>
+        abstract class ErrorCompilacion
+        enum TipoError {
+            LEXICO
+            SINTACTICO
+            SEMANTICO
+        }
+    }
+
+    package "org.compi2.gramatica (ANTLR4 Generados)" #FFF3E0 {
+        class piglatinLexer <<ANTLR4 Lexer>>
+        class piglatinParser <<ANTLR4 Parser>>
+        class piglatinBaseVisitor <<ANTLR4 Visitor>>
+        class yLexer <<ANTLR4 Lexer>>
+        class yParser <<ANTLR4 Parser>>
+        class yBaseVisitor <<ANTLR4 Visitor>>
+        class zetarianoLexer <<ANTLR4 Lexer>>
+        class zetarianoParser <<ANTLR4 Parser>>
+        class zetarianoBaseVisitor <<ANTLR4 Visitor>>
+    }
+
+    package "org.compi2.constructores_ast" #FFF3E0 {
+        class ConstructorAstPigLatin <<Visitor .pig>>
+        class ConstructorAstY <<Visitor .y>>
+        class ConstructorAstZetariano <<Visitor .z>>
+        class UtilidadesAst <<Helper Literales/Binarias>>
+    }
+}
+
+' ============================================================================
+' CAPA 3: REPRESENTACIÓN INTERMEDIA (AST), ANÁLISIS SEMÁNTICO Y TIPOS
+' ============================================================================
+package "CAPA 3: Árbol de Sintaxis Abstracta (AST), Semántica de 3 Pasadas y Tipos" #E8F5E9 {
+
+    package "org.compi2.ast" #A5D6A7 {
+        interface NodoAST {
+            + comprobar(ts: TablaSimbolos, errores: List<ErrorSemantico>): Tipo
+        }
+        interface ModuloSemantico {
+            + registrarEnTablaSimbolos(ts: TablaSimbolos, errores: List<ErrorSemantico>): void
+            + comprobarCuerpos(ts: TablaSimbolos, errores: List<ErrorSemantico>): void
+        }
+    }
+
+    package "org.compi2.ast.sentencias (22 Clases + 2 Inner)" #C8E6C9 {
+        class NodoPrograma <<Raíz .pig>>
+        class "NodoPrograma.InfoImport" as InfoImport <<Inner Class>>
+        class NodoProgramaY <<Raíz .y>>
+        class NodoUnidadCompilacionZ <<Raíz .z>>
+        class NodoClase <<POO Clase / Herencia>>
+        class NodoConstructor <<POO Constructor>>
+        class NodoLlamadaSuper <<POO super(...)>>
+        class NodoFuncion <<Función / Método>>
+        class Parametro <<Parámetro Formal>>
+        class NodoEstructura <<Struct Lenguaje Y>>
+        class NodoDeclaracion <<Var / Const / Arreglo / Campo>>
+        class NodoAsignacion <<Asignación Simple / Compuesta>>
+        class NodoIf <<Condicional If-Else>>
+        class NodoSwitch <<Condicional Switch-Case>>
+        class "NodoSwitch.CasoSwitch" as CasoSwitch <<Inner Class>>
+        class NodoWhile <<Ciclo While / Dum>>
+        class NodoDoWhile <<Ciclo Do-While / Facere>>
+        class NodoFor <<Ciclo For / Per>>
+        class NodoBreak <<Control Break>>
+        class NodoContinue <<Control Continue>>
+        class NodoRetorno <<Control Return>>
+        class NodoImprimir <<Salida Estándar>>
+        class NodoLectura <<Entrada Estándar>>
+    }
+
+    package "org.compi2.ast.expresiones (13 Clases)" #C8E6C9 {
+        class NodoLiteral <<Entero, Decimal, Cadena, Char, Bool, Null>>
+        class NodoIdentificador <<Variable / Símbolo>>
+        class NodoOperacionBinaria <<Aritmética, Relacional, Lógica, Concat>>
+        class NodoOperacionUnaria <<Negación, ++, -->>
+        class NodoExpresionTernaria <<cond ? verd : falso>>
+        class NodoLlamadaFuncion <<Invocación Global>>
+        class NodoLlamadaMetodo <<Invocación POO / Polimórfica>>
+        class NodoInstanciacionObjeto <<new Clase(...)>>
+        class NodoInstanciacionArreglo <<new Tipo[d1][d2]...>>
+        class NodoAccesoArreglo <<arr[i][j]...>>
+        class NodoAccesoMiembro <<obj.campo / this.campo / super.metodo>>
+        class NodoListaValores <<Inicializador {v1, v2, ...}>>
+        class NodoExpresionLectura <<Lectura en Expresión>>
+    }
+
+    package "org.compi2.analisis_semantico (7 Clases)" #DCEDC8 {
+        class TablaSimbolos <<Entorno Global, Pila Ámbitos y Clases>>
+        class Ambito <<Marco Léxico / Función / Ciclo / Switch>>
+        class Simbolo <<Entrada de Símbolo y Offset>>
+        class ContadorDesplazamiento <<Asignador de Offsets>>
+        class ComprobadorTipos <<Matriz de Compatibilidad y Casteo>>
+        class ErrorSemantico <<Error con Archivo y Ámbito>>
+        class YSangriaToken <<Filtro Léxico INDENT/DEDENT>>
+    }
+
+    package "org.compi2.tipos (3 Clases/Enums)" #DCEDC8 {
+        class Tipo <<Descriptor de Tipo Primitivo / Compuesto / POO>>
+        enum TipoBase {
+            BOOLEANO, CARACTER, ENTERO, DECIMAL,
+            CADENA, VOID, NULO, ERROR,
+            ARREGLO, OBJETO_CLASE, ESTRUCTURA, FUNCION
+        }
+        enum Visibilidad {
+            PUBLIC
+            PROTECTED
+            DEFAULT
+            PRIVATE
+        }
+    }
+}
+
+' ============================================================================
+' CAPA 4: GENERACIÓN DE CÓDIGO DE TRES DIRECCIONES (C3D)
+' ============================================================================
+package "CAPA 4: Síntesis de Código Intermedio de Tres Direcciones (C3D)" #F3E5F5 {
+
+    package "org.compi2.c3d (7 Clases + 3 Inner)" #E1BEE7 {
+        class GeneradorC3D <<Orquestador C3D, Sentencias, Control y Funciones>>
+        class ContenedorC3D <<Almacén de Cuartetas y Metadatos RISC-V>>
+        enum "ContenedorC3D.TipoRutinaRiscV" as TipoRutinaRiscV {
+            READ_DECIMAL
+            DECIMAL_TO_HEAP
+        }
+        class "ContenedorC3D.RangoRutinaRiscV" as RangoRutinaRiscV <<Record>>
+        enum "ContenedorC3D.AccionCuartetaRiscV" as AccionCuartetaRiscV {
+            ESCALAR_ARG1_X10000
+            ESCALAR_ARG2_X10000
+            MUL_DECIMAL
+            DIV_DECIMAL
+        }
+        class Cuarteta <<Instrucción (op, arg1, arg2, res)>>
+        enum TipoOperadorC3D {
+            SUMA, RESTA, MULTIPLICACION, DIVISION, DIVISION_ENTERA,
+            MODULO, MENOS_UNARIO, ASIGNACION, ETIQUETA, GOTO,
+            IF_IGUAL, IF_DIFERENTE, IF_MENOR, IF_MENOR_IGUAL,
+            IF_MAYOR, IF_MAYOR_IGUAL, ACCESO_STACK, ASIGNACION_STACK,
+            ACCESO_HEAP, ASIGNACION_HEAP, ACCESO_BUFFER, ASIGNACION_BUFFER,
+            PRINT_INT, PRINT_DOUBLE, PRINT_CHAR, READ_STR
+        }
+        class GestorTemporales <<Generador t0..tn>>
+        class GestorEtiquetas <<Generador L0..Ln>>
+        class PlantillaC <<Envoltura C Ejecutable (stack, heap, buffer_str)>>
+    }
+
+    package "org.compi2.c3d.generadores (3 Clases + 2 Records)" #F3E5F5 {
+        class ContextoC3D <<Memoria P/H, Temporales Activos, Herencia y VCall>>
+        class "ContextoC3D.SitioLlamada" as SitioLlamada <<Record>>
+        class "ContextoC3D.InfoDespachadorVirtual" as InfoDespachadorVirtual <<Record>>
+        class GeneradorExpresiones <<Expresiones, Arreglos N-D, Objetos y Llamadas>>
+        class RutinasC3D <<Rutinas Nativas: PrintStr, ReadNum, ReadStr, Concat>>
+    }
+}
+
+' ============================================================================
+' CAPA 5: BACKEND DE CÓDIGO OBJETO Y EJECUCIÓN (RISC-V)
+' ============================================================================
+package "CAPA 5: Backend Assembler RISC-V (RV32IM) y Simulador de Ejecución" #FFEBEE {
+
+    package "org.compi2.riscv (2 Clases + 2 Records)" #FFCDD2 {
+        class GeneradorRiscV <<Traductor C3D a Ensamblador RV32IM>> {
+            • Secciones .data y .text (.globl main)
+            • Registros s0(P), s1(H), s2(&stack), s3(&heap), s4(&buffer_str), s5(&~__temp_mem)
+            • Punto fijo decimal (x10000) y ~__print_decimal
+        }
+        class SimuladorRiscV <<Intérprete RV32IM + Lanzador Terminal + Venus>> {
+            • 32 registros enteros y memoria paginada (64 KB)
+            • Syscalls ecall (1, 4, 8, 10, 11, 93)
+            • Consola externa OS para lectura interactiva
+        }
+        class "SimuladorRiscV.Instruccion" as InstruccionRiscV <<Record>>
+        class "SimuladorRiscV.MemOp" as MemOpRiscV <<Record>>
+    }
+}
+
+' ============================================================================
+' CONEXIONES ARQUITECTÓNICAS PRINCIPALES
+' ============================================================================
+
+' Capa 1 (UI)
+Main --> VentanaPrincipal : inicia aplicación
+Main --> RenderizadorGraphviz : configura loggers
+VentanaPrincipal *-- PanelEditorTexto
+VentanaPrincipal *-- PanelConsola
+VentanaPrincipal *-- PanelArbolProyecto
+VentanaPrincipal *-- PanelImagenZoom
+VentanaPrincipal *-- AccionesProyecto
+VentanaPrincipal *-- ModeloTablaSimbolos
+VentanaPrincipal *-- ModeloTablaErrores
+VentanaPrincipal --> TareaCompilacion : lanza en background
+VentanaPrincipal --> DialogoTabla : abre reportes
+VentanaPrincipal --> RenderizadorGraphviz : renderiza AST
+VentanaPrincipal --> SimuladorRiscV : ejecuta Assembler (.s)
+
+PanelEditorTexto *-- EditorKitPlantilla
+PanelEditorTexto *-- NumeroLinea
+EditorKitPlantilla --> VistaSintaxis : instancia
+VistaSintaxis --> Simbolo : coloreado semántico
+
+PanelArbolProyecto *-- NodoArchivo
+PanelArbolProyecto *-- RendererNodoArchivo
+PanelArbolProyecto *-- AccionesProyecto
+
+' Capa 1 -> Capa 2
+TareaCompilacion --> OrquestadorCompilacion : 1. compilarArchivo()
+TareaCompilacion --> GeneradorDot : genera grafos DOT
+TareaCompilacion o-- ResultadoCompilacion
+
+' Capa 2 (Orquestador y ANTLR4)
+OrquestadorCompilacion --> GestorImports : 2. resuelve imports (.y / .z)
+GestorImports *-- ResolucionImport
+GestorImports --> ArchivoFuente : instancia y valida
+ArchivoFuente *-- TipoLenguaje
+ArchivoFuente o-- NodoAST
+
+OrquestadorCompilacion --> piglatinLexer : tokeniza .pig
+piglatinLexer --> piglatinParser
+piglatinParser --> ConstructorAstPigLatin
+ConstructorAstPigLatin --|> piglatinBaseVisitor
+
+OrquestadorCompilacion --> yLexer : tokeniza .y
+yLexer --> YSangriaToken : inyecta INDENT/DEDENT
+YSangriaToken --> yParser
+yParser --> ConstructorAstY
+ConstructorAstY --|> yBaseVisitor
+
+OrquestadorCompilacion --> zetarianoLexer : tokeniza .z
+zetarianoLexer --> zetarianoParser
+zetarianoParser --> ConstructorAstZetariano
+ConstructorAstZetariano --|> zetarianoBaseVisitor
+
+ConstructorAstPigLatin --> UtilidadesAst
+ConstructorAstY --> UtilidadesAst
+ConstructorAstZetariano --> UtilidadesAst
+
+OrquestadorCompilacion --> CustomErrorListener : adjunta a Lexers/Parsers
+CustomErrorListener *-- ErrorCompilacion
+ErrorCompilacion *-- TipoError
+ErrorSemantico --|> ErrorCompilacion
+
+' Capa 2 -> Capa 3 (AST y Semántica)
+ConstructorAstPigLatin --> NodoPrograma : 3. construye AST .pig
+ConstructorAstY --> NodoProgramaY : 3. construye AST .y
+ConstructorAstZetariano --> NodoUnidadCompilacionZ : 3. construye AST .z
+
+ModuloSemantico --|> NodoAST
+NodoPrograma ..|> ModuloSemantico
+NodoProgramaY ..|> ModuloSemantico
+NodoUnidadCompilacionZ ..|> ModuloSemantico
+
+NodoPrograma *-- InfoImport
+NodoPrograma o-- NodoAST : declaraciones / MAIOR
+NodoProgramaY *-- NodoEstructura
+NodoProgramaY *-- NodoFuncion
+NodoUnidadCompilacionZ *-- NodoClase
+NodoClase *-- NodoDeclaracion : campos
+NodoClase *-- NodoConstructor : constructores
+NodoClase *-- NodoFuncion : métodos
+NodoConstructor *-- Parametro
+NodoConstructor o-- NodoLlamadaSuper : super(...)
+NodoFuncion *-- Parametro
+NodoSwitch *-- CasoSwitch
+
+OrquestadorCompilacion --> ModuloSemantico : 4. ejecuta Pasadas 1, 1.5 y 2
+ModuloSemantico --> TablaSimbolos : registra y valida
+NodoAST --> TablaSimbolos : comprueba tipos y ámbitos
+NodoAST --> ComprobadorTipos : valida operaciones
+NodoAST --> ErrorSemantico : reporta errores
+
+TablaSimbolos *-- Ambito
+TablaSimbolos *-- Simbolo
+TablaSimbolos *-- Tipo
+Ambito *-- ContadorDesplazamiento
+Simbolo *-- Tipo
+Tipo *-- TipoBase
+Tipo *-- Visibilidad
+
+' Capa 2 -> Capa 4 (Generación C3D)
+OrquestadorCompilacion --> GeneradorC3D : 5. compilarConFunciones()
+GeneradorC3D *-- ContextoC3D
+GeneradorC3D *-- GeneradorExpresiones
+GeneradorC3D --> PlantillaC : empaqueta código .c
+ContextoC3D *-- ContenedorC3D
+ContextoC3D *-- RutinasC3D
+ContextoC3D *-- SitioLlamada
+ContextoC3D *-- InfoDespachadorVirtual
+ContextoC3D o-- TablaSimbolos
+GeneradorExpresiones o-- ContextoC3D
+RutinasC3D o-- ContenedorC3D
+
+ContenedorC3D *-- Cuarteta
+ContenedorC3D *-- GestorTemporales
+ContenedorC3D *-- GestorEtiquetas
+ContenedorC3D *-- RangoRutinaRiscV
+ContenedorC3D *-- TipoRutinaRiscV
+ContenedorC3D *-- AccionCuartetaRiscV
+Cuarteta *-- TipoOperadorC3D
+
+' Capa 2/4 -> Capa 5 (Backend RISC-V)
+OrquestadorCompilacion --> GeneradorRiscV : 6. generarCodigo(ContenedorC3D)
+GeneradorRiscV --> ContenedorC3D : traduce cuartetas y metadatos
+OrquestadorCompilacion --> ResultadoCompilacion : 7. empaqueta C3D + RISC-V
+SimuladorRiscV *-- InstruccionRiscV
+SimuladorRiscV *-- MemOpRiscV
+
+@enduml

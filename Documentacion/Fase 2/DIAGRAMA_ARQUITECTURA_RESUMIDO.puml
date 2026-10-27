@@ -1,0 +1,112 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+
+skinparam defaultFontName "Segoe UI"
+skinparam fontSize 11
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #495057
+}
+
+title
+<b>Diagrama de Arquitectura — Compilador Multilenguaje (Fase 2)</b>
+<i>PigLatin (.pig)  •  Lenguaje Y (.y)  •  Zetariano (.z)  →  C3D (C)  →  Assembler RISC-V (RV32IM)</i>
+end title
+
+' ============================================================================
+' CAPA 1: INTERFAZ GRÁFICA DE USUARIO (UI / IDE)
+' ============================================================================
+package "Capa 1: Interfaz Gráfica de Usuario (org.compi2.UI)" #E8F4FD {
+
+    rectangle "**VentanaPrincipal**\n(JFrame Principal del IDE)" as UI_Main #BBDEFB
+
+    rectangle "**Editor y Proyecto**\n• PanelEditorTexto\n• VistaSintaxis / NumeroLinea\n• PanelArbolProyecto\n• AccionesProyecto" as UI_Editor #E3F2FD
+
+    rectangle "**Ejecución Asíncrona**\n• TareaCompilacion\n  (SwingWorker)" as UI_Worker #E3F2FD
+
+    rectangle "**Salidas y Reportes Visuales**\n• PanelConsola (Salida / Logs)\n• Pestaña Código C3D (.c)\n• Pestaña Assembler RISC-V (.s)\n• PanelImagenZoom (Visor AST)\n• GeneradorDot / RenderizadorGraphviz\n• DialogoTabla (Símbolos y Errores)" as UI_Output #E3F2FD
+}
+
+' ============================================================================
+' CAPA 2: ORQUESTACIÓN Y FRONT-END LÉXICO / SINTÁCTICO
+' ============================================================================
+package "Capa 2: Orquestación y Análisis Léxico-Sintáctico (org.compi2.orquestador / ANTLR4)" #FFF8E1 {
+
+    rectangle "**Orquestación Multilenguaje**\n• OrquestadorCompilacion\n• GestorImports (ResolucionImport)\n• ArchivoFuente / TipoLenguaje\n• ResultadoCompilacion" as Orq #FFE082
+
+    rectangle "**Analizadores Generados por ANTLR4**\n• **PigLatin (.pig):** piglatinLexer / piglatinParser\n• **Lenguaje Y (.y):** yLexer + YSangriaToken (INDENT/DEDENT) / yParser\n• **Zetariano (.z):** zetarianoLexer / zetarianoParser" as Antlr #FFF3E0
+
+    rectangle "**Constructores de AST (Visitors)**\n• ConstructorAstPigLatin\n• ConstructorAstY\n• ConstructorAstZetariano\n• UtilidadesAst" as Builders #FFF3E0
+
+    rectangle "**Gestión de Errores**\n• CustomErrorListener\n• ErrorCompilacion / TipoError" as Errs #FFECB3
+}
+
+' ============================================================================
+' CAPA 3: REPRESENTACIÓN INTERMEDIA (AST) Y ANÁLISIS SEMÁNTICO
+' ============================================================================
+package "Capa 3: AST y Análisis Semántico de Tres Pasadas (org.compi2.ast / analisis_semantico / tipos)" #E8F5E9 {
+
+    rectangle "**Árbol de Sintaxis Abstracta (AST)**\n• Interfaces: NodoAST, ModuloSemantico\n• Raíces: NodoPrograma (.pig), NodoProgramaY (.y), NodoUnidadCompilacionZ (.z)\n• POO y Tipos: NodoClase, NodoConstructor, NodoFuncion, NodoLlamadaSuper, NodoEstructura\n• Control y Sentencias: NodoDeclaracion, NodoAsignacion, NodoIf, NodoSwitch, NodoWhile, NodoDoWhile, NodoFor, NodoImprimir, NodoLectura\n• Expresiones: NodoOperacionBinaria, NodoOperacionUnaria, NodoLlamadaMetodo, NodoLlamadaFuncion, NodoInstanciacionObjeto, NodoAccesoMiembro, NodoAccesoArreglo" as AST #C8E6C9
+
+    rectangle "**Motor Semántico (3 Pasadas)**\n**Pasada 1:** Registro de Firmas (Structs, Clases, Constructores, Métodos, Funciones)\n**Pasada 1.5:** Enlace de Herencia POO (extends, ciclos, resolución de tipos diferidos)\n**Pasada 2:** Comprobación de Cuerpos, Tipos, Visibilidad (public/protected/private),\n                  Sobrescritura (@Override), Polimorfismo y Reglas de Constructores (super)" as SemMotor #A5D6A7
+
+    rectangle "**Entorno y Sistema de Tipos**\n• TablaSimbolos (Pila de Ámbitos y Clases)\n• Ambito / Simbolo / ContadorDesplazamiento\n• ComprobadorTipos / ErrorSemantico\n• Tipo / TipoBase / Visibilidad" as SymTab #DCEDC8
+}
+
+' ============================================================================
+' CAPA 4: GENERACIÓN DE CÓDIGO INTERMEDIO (C3D)
+' ============================================================================
+package "Capa 4: Síntesis de Código de Tres Direcciones (org.compi2.c3d)" #F3E5F5 {
+
+    rectangle "**GeneradorC3D y Módulos de Traducción**\n• **GeneradorC3D:** Orquestador C3D, declaraciones, asignaciones, control de flujo (if/switch/bucles), funciones, super()\n• **ContextoC3D:** Gestión de marcos de pila (P), Heap (H), temporales activos, polimorfismo (~__typeId~__) y despachadores virtuales (~__vcall_)\n• **GeneradorExpresiones:** Aritmética, lógica de cortocircuito, arreglos N-D, objetos, llamadas y conversión de tipos\n• **RutinasC3D:** Subrutinas C3D en línea (impresión de cadenas, lectura numérica/texto en buffer_str y concatenación en Heap)" as C3D_Gen #E1BEE7
+
+    rectangle "**Modelo y Contenedor C3D**\n• ContenedorC3D (TipoRutinaRiscV, AccionCuartetaRiscV)\n• Cuarteta / TipoOperadorC3D\n• GestorTemporales (t0..tn) / GestorEtiquetas (L0..Ln)\n• PlantillaC (Emisión de código C ejecutable con Stack[65536], Heap[65536] y buffer_str[1024])" as C3D_Model #F3E5F5
+}
+
+' ============================================================================
+' CAPA 5: BACKEND DE CÓDIGO OBJETO Y EJECUCIÓN (RISC-V)
+' ============================================================================
+package "Capa 5: Backend Assembler RISC-V y Simulación (org.compi2.riscv)" #FFEBEE {
+
+    rectangle "**GeneradorRiscV (Traductor C3D → RV32IM)**\n• Secciones **.data** (stack, heap, buffer_str, ~__temp_mem) y **.text** (.globl main)\n• Registros dedicados: **s0** (P), **s1** (H), **s2** (&stack), **s3** (&heap), **s4** (&buffer_str), **s5** (&~__temp_mem)\n• Aritmética entera y punto fijo decimal (**ESCALA_PUNTO_FIJO = 10000**)\n• Subrutina nativa **~__print_decimal** y llamadas al sistema (**ecall**)" as RiscV_Gen #FFCDD2
+
+    rectangle "**SimuladorRiscV (Ejecución de Código Objeto)**\n• Lanzador de **Terminal Interactiva Externa** (Consola OS para E/S en vivo)\n• Integración opcional con simulador **Venus Oficial** (JAR)\n• **Motor Intérprete RV32IM Integrado en Java:**\n  32 registros, memoria paginada (64 KB/página), parser .data/.text y soporte completo de **ecall** (1, 4, 8, 10, 11, 93)" as RiscV_Sim #EF9A9A
+}
+
+' ============================================================================
+' RELACIONES DE FLUJO ENTRE CAPAS
+' ============================================================================
+UI_Main --> UI_Editor : gestiona archivos\ny edición
+UI_Main --> UI_Worker : inicia compilación\n(hilo de fondo)
+UI_Worker --> Orq : 1. compilarArchivo(.pig)
+UI_Worker --> UI_Output : 8. actualiza AST, Tablas,\nC3D y Assembler
+
+Orq --> Antlr : 2. tokeniza y parsea\n(.pig, .y, .z)
+Antlr --> Errs : notifica errores\nléxicos/sintácticos
+Antlr --> Builders : entrega ParseTree
+Builders --> AST : 3. construye nodos AST
+
+Orq --> SemMotor : 4. ejecuta análisis\nsemántico (3 pasadas)
+SemMotor <--> AST : recorre y valida\n(ModuloSemantico / NodoAST)
+SemMotor <--> SymTab : registra y consulta\nsímbolos, tipos y herencia
+SemMotor --> Errs : registra ErrorSemantico
+
+Orq --> C3D_Gen : 5. sintetiza código\nintermedio (si no hay errores)
+C3D_Gen --> AST : recorre AST validado
+C3D_Gen --> SymTab : consulta offsets,\nclases y firmas
+C3D_Gen --> C3D_Model : emite Cuartetas y\nmarca metadatos RISC-V
+
+Orq --> RiscV_Gen : 6. traduce ContenedorC3D\na Assembler RV32IM
+C3D_Model --> RiscV_Gen : provee lista de Cuartetas\ny rangos/acciones RISC-V
+Orq --> UI_Worker : 7. retorna ResultadoCompilacion\n(C3D + RISC-V + Símbolos + Errores)
+
+UI_Main --> RiscV_Sim : 9. botón "Ejecutar Assembler"\n(ejecución interactiva o integrada)
+RiscV_Gen ..> RiscV_Sim : provee código .s\n(RV32IM)
+RiscV_Sim --> UI_Output : envía salida estándar\na PanelConsola / Terminal
+
+@enduml
