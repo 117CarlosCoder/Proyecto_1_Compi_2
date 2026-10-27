@@ -7,9 +7,15 @@ import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.ast.expresiones.NodoAccesoArreglo;
 import org.compi2.ast.expresiones.NodoAccesoMiembro;
+import org.compi2.ast.expresiones.NodoExpresionTernaria;
 import org.compi2.ast.expresiones.NodoIdentificador;
+import org.compi2.ast.expresiones.NodoInstanciacionArreglo;
+import org.compi2.ast.expresiones.NodoInstanciacionObjeto;
+import org.compi2.ast.expresiones.NodoLiteral;
 import org.compi2.ast.expresiones.NodoLlamadaFuncion;
 import org.compi2.ast.expresiones.NodoLlamadaMetodo;
+import org.compi2.ast.expresiones.NodoOperacionBinaria;
+import org.compi2.ast.expresiones.NodoOperacionUnaria;
 import org.compi2.ast.sentencias.NodoDeclaracion;
 import org.compi2.ast.sentencias.NodoDoWhile;
 import org.compi2.ast.sentencias.NodoFor;
@@ -27,6 +33,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +43,7 @@ import java.util.Set;
 public class ContextoC3D {
 
     public record SitioLlamada(int id, String etiquetaRetorno) {}
+    public record InfoDespachadorVirtual(String claseBase, String nombreMetodo, List<Tipo> tiposParams) {}
 
     @Getter
     private final ContenedorC3D c3d;
@@ -57,6 +66,9 @@ public class ContextoC3D {
     private int contadorLlamadas = 0;
     private final Map<String, List<SitioLlamada>> sitiosLlamadaPorFuncion = new HashMap<>();
     private final Set<String> temporalesActivos = new LinkedHashSet<>();
+    private final Set<InfoDespachadorVirtual> despachadoresVirtualesRegistrados = new LinkedHashSet<>();
+    private final Map<String, Integer> idsClases = new LinkedHashMap<>();
+    private int siguienteIdClase = 1;
 
     public ContextoC3D(TablaSimbolos tablaSimbolos) {
         this(new ContenedorC3D(), tablaSimbolos);
@@ -117,15 +129,25 @@ public class ContextoC3D {
     }
 
     public void escribirVariable(String nombre, String valor) {
+        escribirVariable(nombre, valor, false);
+    }
+
+    public void escribirVariable(String nombre, String valor, boolean escalarADecimal) {
         if (esCampoDeThis(nombre)) {
             String tempPosicionCampo = calcularPosicionCampoThis(nombre);
             c3d.emitirAsignacionHeap(tempPosicionCampo, valor);
+            if (escalarADecimal) {
+                marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+            }
             return;
         }
 
         int offset = obtenerOffset(nombre);
         String tempPosicion = calcularPosicionStack(offset);
         c3d.emitirAsignacionStack(tempPosicion, valor);
+        if (escalarADecimal) {
+            marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        }
     }
 
     public String aplicarIncremento(String nombre, boolean esIncremento, boolean esPrefijo) {
@@ -159,14 +181,28 @@ public class ContextoC3D {
     }
 
     public void escribirHeap(String base, String offset, String valor) {
+        escribirHeap(base, offset, valor, false);
+    }
+
+    public void escribirHeap(String base, String offset, String valor, boolean escalarADecimal) {
         String tempPosicion = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempPosicion, base, offset);
         c3d.emitirAsignacionHeap(tempPosicion, valor);
+        if (escalarADecimal) {
+            marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        }
     }
 
     public void pasarParametro(int offsetStack, String valor) {
+        pasarParametro(offsetStack, valor, false);
+    }
+
+    public void pasarParametro(int offsetStack, String valor, boolean escalarADecimal) {
         String tempPosicion = calcularPosicionStack(offsetStack);
         c3d.emitirAsignacionStack(tempPosicion, valor);
+        if (escalarADecimal) {
+            marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        }
     }
 
     public void registrarSitioLlamada(String nombreFuncion, int id, String etiquetaRetorno) {
@@ -273,8 +309,60 @@ public class ContextoC3D {
         }
     }
 
+    public int getIndiceActualCuarteta() {
+        return c3d.getCantidadCuartetas();
+    }
+
+    public void marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV accion) {
+        c3d.marcarAccionUltimaCuartetaRiscV(accion);
+    }
+
+    public void marcarAccionRiscV(int indiceCuarteta, ContenedorC3D.AccionCuartetaRiscV accion) {
+        c3d.marcarAccionRiscV(indiceCuarteta, accion);
+    }
+
+    public boolean requiereEscalarEnteroADecimal(Tipo tipoDestino, Tipo tipoOrigen) {
+        if (tipoDestino == null || tipoOrigen == null) {
+            return false;
+        }
+        return tipoDestino.getBase() == TipoBase.DECIMAL
+                && (tipoOrigen.getBase() == TipoBase.ENTERO || tipoOrigen.getBase() == TipoBase.CARACTER);
+    }
+
+    public Tipo obtenerTipoVariable(String nombre) {
+        if (nombre == null) return null;
+        if (tiposLocales.containsKey(nombre)) {
+            return tiposLocales.get(nombre);
+        }
+        if (esCampoDeThis(nombre)) {
+            Tipo tipoClaseThis = obtenerTipoClaseThis();
+            if (tipoClaseThis != null && tipoClaseThis.buscarCampo(nombre) != null) {
+                return tipoClaseThis.buscarCampo(nombre);
+            }
+        }
+        Simbolo s = tablaSimbolos.buscarSimbolo(nombre);
+        if (s != null && s.getTipo() != null) {
+            return s.getTipo();
+        }
+        return null;
+    }
+
     public void emitirReadNum(String destino) {
+        emitirReadNum(destino, false);
+    }
+
+    public void emitirReadNum(String destino, boolean esDecimal) {
+        int inicio = c3d.getCantidadCuartetas();
         rutinas.emitirReadNum(destino);
+        if (esDecimal) {
+            c3d.registrarRutinaRiscV(new ContenedorC3D.RangoRutinaRiscV(
+                    ContenedorC3D.TipoRutinaRiscV.READ_DECIMAL,
+                    inicio,
+                    c3d.getCantidadCuartetas(),
+                    null,
+                    destino
+            ));
+        }
     }
 
     public String emitirReadStr() {
@@ -286,15 +374,27 @@ public class ContextoC3D {
     }
 
     public String emitirConcatStrNum(String p1, String num) {
-        return rutinas.emitirConcatStrNum(p1, num);
+        return emitirConcatStrNum(p1, num, false);
+    }
+
+    public String emitirConcatStrNum(String p1, String num, boolean esDecimal) {
+        return rutinas.emitirConcatStrNum(p1, num, esDecimal);
     }
 
     public String emitirConcatNumStr(String num, String p2) {
-        return rutinas.emitirConcatNumStr(num, p2);
+        return emitirConcatNumStr(num, p2, false);
+    }
+
+    public String emitirConcatNumStr(String num, String p2, boolean esDecimal) {
+        return rutinas.emitirConcatNumStr(num, p2, esDecimal);
     }
 
     public String emitirNumeroAHeap(String num) {
-        return rutinas.emitirNumeroAHeap(num);
+        return emitirNumeroAHeap(num, false);
+    }
+
+    public String emitirNumeroAHeap(String num, boolean esDecimal) {
+        return rutinas.emitirNumeroAHeap(num, esDecimal);
     }
 
     public void entrarCiclo(String etiquetaBreak, String etiquetaContinue) {
@@ -347,10 +447,21 @@ public class ContextoC3D {
     }
 
     public String resolverEtiquetaMetodo(String nombreClase, String nombreMetodo, List<Tipo> tiposParametros) {
-        if (requiereCalificarMetodo(nombreClase, nombreMetodo)) {
-            return nombreClase + "__" + nombreMetodo + "__" + Tipo.unirTiposParametros(tiposParametros);
+        String claseDeclarante = obtenerClaseDeclaranteMetodo(nombreClase, nombreMetodo, tiposParametros);
+        if (claseDeclarante == null) {
+            claseDeclarante = nombreClase;
+        }
+        if (requiereCalificarMetodo(claseDeclarante, nombreMetodo)) {
+            return claseDeclarante + "__" + nombreMetodo + "__" + Tipo.unirTiposParametros(tiposParametros);
         }
         return nombreMetodo;
+    }
+
+    public String obtenerClaseDeclaranteMetodo(String nombreClase, String nombreMetodo, List<Tipo> tiposParametros) {
+        if (nombreClase == null) return null;
+        Tipo tipoClase = tablaSimbolos.buscarTipoCompuesto(nombreClase);
+        if (tipoClase == null) return nombreClase;
+        return tipoClase.obtenerClaseDeclaranteMetodo(nombreMetodo, tiposParametros);
     }
 
     private boolean requiereCalificarMetodo(String nombreClase, String nombreMetodo) {
@@ -378,6 +489,15 @@ public class ContextoC3D {
         }
         switch (estructura) {
             case NodoIdentificador id -> {
+                if ("super".equals(id.getNombre())) {
+                    Tipo tipoThis = obtenerTipoClaseThis();
+                    if (tipoThis != null && tipoThis.getClasePadre() != null) {
+                        Tipo padre = tablaSimbolos.buscarTipoCompuesto(tipoThis.getClasePadre());
+                        if (padre != null) {
+                            return padre;
+                        }
+                    }
+                }
                 if (tiposLocales.containsKey(id.getNombre())) {
                     return tiposLocales.get(id.getNombre());
                 }
@@ -418,6 +538,32 @@ public class ContextoC3D {
                 if (llamadaFuncion.getFuncionResuelta() != null) {
                     return llamadaFuncion.getFuncionResuelta().getTipoRetorno();
                 }
+            }
+            case NodoLiteral lit -> {
+                return lit.getTipo();
+            }
+            case NodoOperacionBinaria bin -> {
+                if (bin.getTipoResultado() != null) {
+                    return bin.getTipoResultado();
+                }
+            }
+            case NodoOperacionUnaria un -> {
+                if (un.getTipoResultado() != null) {
+                    return un.getTipoResultado();
+                }
+            }
+            case NodoExpresionTernaria tern -> {
+                if (tern.getTipoResultado() != null) {
+                    return tern.getTipoResultado();
+                }
+            }
+            case NodoInstanciacionObjeto instObj -> {
+                Tipo tc = tablaSimbolos.buscarTipoCompuesto(instObj.getNombreClase());
+                return tc != null ? tc : new Tipo(TipoBase.OBJETO_CLASE, instObj.getNombreClase());
+            }
+            case NodoInstanciacionArreglo instArr -> {
+                int dims = instArr.getTamanosDimensiones() != null ? instArr.getTamanosDimensiones().size() : 1;
+                return new Tipo(instArr.getTipoComponente(), dims);
             }
             default -> {}
         }
@@ -583,5 +729,159 @@ public class ContextoC3D {
         contadorLlamadas = 0;
         sitiosLlamadaPorFuncion.clear();
         offsetMaximo = 2;
+        despachadoresVirtualesRegistrados.clear();
+        idsClases.clear();
+        siguienteIdClase = 1;
+    }
+
+    public int obtenerIdClase(String nombreClase) {
+        if (nombreClase == null) return 0;
+        return idsClases.computeIfAbsent(nombreClase, k -> siguienteIdClase++);
+    }
+
+    public boolean participaEnHerencia(String nombreClase) {
+        if (nombreClase == null) return false;
+        Tipo tipo = tablaSimbolos.buscarTipoCompuesto(nombreClase);
+        if (tipo == null || tipo.getBase() != TipoBase.OBJETO_CLASE) return false;
+        if (tipo.getClasePadre() != null && !tipo.getClasePadre().isBlank()) {
+            return true;
+        }
+        for (Tipo otro : tablaSimbolos.getCatalogoTiposCompuestos().values()) {
+            if (otro.getBase() == TipoBase.OBJETO_CLASE && otro.esSubclaseDe(nombreClase)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean tieneSobrescriturasEnSubclase(String nombreClaseBase, String nombreMetodo, List<Tipo> tiposParams) {
+        if (nombreClaseBase == null || nombreMetodo == null) return false;
+        for (Tipo subTipo : tablaSimbolos.getCatalogoTiposCompuestos().values()) {
+            if (subTipo.getBase() == TipoBase.OBJETO_CLASE
+                    && !subTipo.getNombreTipo().equals(nombreClaseBase)
+                    && subTipo.esSubclaseDe(nombreClaseBase)) {
+                List<Tipo> propias = subTipo.getMetodos().get(nombreMetodo);
+                if (propias != null) {
+                    for (Tipo m : propias) {
+                        if (tiposParams == null || tiposParams.isEmpty()) {
+                            if (m.getParametros() == null || m.getParametros().isEmpty()) {
+                                return true;
+                            }
+                        }
+                        if (m.getParametros() != null && tiposParams != null
+                                && (Tipo.coincideFirmaExacta(m.getParametros(), tiposParams)
+                                || Tipo.coincideFirma(m.getParametros(), tiposParams))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public String obtenerNombreDespachadorVirtual(String claseBase, String nombreMetodo, List<Tipo> tiposParams) {
+        return "dispatch_" + claseBase + "__" + nombreMetodo + "__" + Tipo.unirTiposParametros(tiposParams);
+    }
+
+    public List<String> obtenerTodasLasImplementacionesMetodo(String claseBase, String nombreMetodo, List<Tipo> tiposParams) {
+        Set<String> implementaciones = new LinkedHashSet<>();
+        implementaciones.add(resolverEtiquetaMetodo(claseBase, nombreMetodo, tiposParams));
+
+        for (Tipo subTipo : tablaSimbolos.getCatalogoTiposCompuestos().values()) {
+            if (subTipo.getBase() == TipoBase.OBJETO_CLASE && subTipo.esSubclaseDe(claseBase)) {
+                implementaciones.add(resolverEtiquetaMetodo(subTipo.getNombreTipo(), nombreMetodo, tiposParams));
+            }
+        }
+        return new ArrayList<>(implementaciones);
+    }
+
+    public String realizarLlamadaVirtual(String claseBase, String nombreMetodo, List<Tipo> tiposParams,
+                                         int desplazamiento, boolean conRetorno) {
+        String nombreDespachador = obtenerNombreDespachadorVirtual(claseBase, nombreMetodo, tiposParams);
+        despachadoresVirtualesRegistrados.add(new InfoDespachadorVirtual(claseBase, nombreMetodo, tiposParams));
+
+        int idLlamada = ++contadorLlamadas;
+        String etiquetaRetorno = "L_ret_" + idLlamada;
+
+        List<String> implementaciones = obtenerTodasLasImplementacionesMetodo(claseBase, nombreMetodo, tiposParams);
+        for (String impl : implementaciones) {
+            registrarSitioLlamada(impl, idLlamada, etiquetaRetorno);
+        }
+
+        List<String> temporalesParaSalvar = new ArrayList<>(temporalesActivos);
+        int baseSalvar = offsetMaximo;
+        salvarTemporalesActivos(temporalesParaSalvar, baseSalvar);
+
+        String tempPosicionRetorno = c3d.nuevoTemporal();
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempPosicionRetorno, "P", String.valueOf(desplazamiento + 1));
+        c3d.emitirAsignacionStack(tempPosicionRetorno, String.valueOf(idLlamada));
+
+        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "P", "P", String.valueOf(desplazamiento));
+
+        c3d.emitirGoto("fn_" + nombreDespachador);
+
+        c3d.emitirEtiqueta(etiquetaRetorno);
+
+        String tempRetorno = null;
+        if (conRetorno) {
+            tempRetorno = c3d.nuevoTemporal();
+            c3d.emitirAccesoStack(tempRetorno, "P");
+        }
+
+        c3d.emitirOperacion(TipoOperadorC3D.RESTA, "P", "P", String.valueOf(desplazamiento));
+
+        restaurarTemporalesActivos(temporalesParaSalvar, baseSalvar);
+
+        return tempRetorno;
+    }
+
+    public void emitirDespachadoresVirtuales() {
+        if (despachadoresVirtualesRegistrados.isEmpty()) return;
+
+        for (InfoDespachadorVirtual disp : despachadoresVirtualesRegistrados) {
+            String nombreDespachador = obtenerNombreDespachadorVirtual(disp.claseBase(), disp.nombreMetodo(), disp.tiposParams());
+            c3d.emitirEtiqueta("fn_" + nombreDespachador);
+
+            String tempPosThis = c3d.nuevoTemporal();
+            c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempPosThis, "P", "2");
+            String tempThis = c3d.nuevoTemporal();
+            c3d.emitirAccesoStack(tempThis, tempPosThis);
+
+            String tempPosType = c3d.nuevoTemporal();
+            c3d.emitirOperacion(TipoOperadorC3D.RESTA, tempPosType, tempThis, "1");
+            String tempTypeId = c3d.nuevoTemporal();
+            c3d.emitirAccesoHeap(tempTypeId, tempPosType);
+
+            List<String> subclases = new ArrayList<>();
+            for (Tipo subTipo : tablaSimbolos.getCatalogoTiposCompuestos().values()) {
+                if (subTipo.getBase() == TipoBase.OBJETO_CLASE
+                        && !subTipo.getNombreTipo().equals(disp.claseBase())
+                        && subTipo.esSubclaseDe(disp.claseBase())) {
+                    subclases.add(subTipo.getNombreTipo());
+                }
+            }
+            subclases.sort((a, b) -> Integer.compare(calcularProfundidadHerencia(b), calcularProfundidadHerencia(a)));
+
+            for (String subClase : subclases) {
+                int idSub = obtenerIdClase(subClase);
+                String etiquetaDestino = resolverEtiquetaMetodo(subClase, disp.nombreMetodo(), disp.tiposParams());
+                c3d.emitirIf(TipoOperadorC3D.IF_IGUAL, tempTypeId, String.valueOf(idSub), "fn_" + etiquetaDestino);
+            }
+
+            String etiquetaBase = resolverEtiquetaMetodo(disp.claseBase(), disp.nombreMetodo(), disp.tiposParams());
+            c3d.emitirGoto("fn_" + etiquetaBase);
+        }
+    }
+
+    private int calcularProfundidadHerencia(String nombreClase) {
+        int profundidad = 0;
+        Tipo actual = tablaSimbolos.buscarTipoCompuesto(nombreClase);
+        Set<String> visitados = new HashSet<>();
+        while (actual != null && actual.getClasePadre() != null && !actual.getClasePadre().isBlank() && visitados.add(actual.getNombreTipo())) {
+            profundidad++;
+            actual = tablaSimbolos.buscarTipoCompuesto(actual.getClasePadre());
+        }
+        return profundidad;
     }
 }

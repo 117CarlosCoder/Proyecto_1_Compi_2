@@ -93,6 +93,60 @@ public class ContenedorC3D {
         emitir(new Cuarteta(TipoOperadorC3D.ASIGNACION_BUFFER, valor, null, posicion));
     }
 
+    public enum TipoRutinaRiscV {
+        READ_DECIMAL,
+        DECIMAL_TO_HEAP
+    }
+
+    public record RangoRutinaRiscV(
+            TipoRutinaRiscV tipo,
+            int inicioInclusive,
+            int finExclusive,
+            String arg,
+            String resultado) {
+    }
+
+    public enum AccionCuartetaRiscV {
+        ESCALAR_ARG1_X10000,
+        ESCALAR_ARG2_X10000,
+        MUL_DECIMAL,
+        DIV_DECIMAL
+    }
+
+    private final java.util.Map<Integer, RangoRutinaRiscV> rutinasRiscVPorInicio = new java.util.HashMap<>();
+    private final java.util.Map<Integer, java.util.EnumSet<AccionCuartetaRiscV>> accionesRiscVPorCuarteta = new java.util.HashMap<>();
+
+    public int getCantidadCuartetas() {
+        return cuartetas.size();
+    }
+
+    public void registrarRutinaRiscV(RangoRutinaRiscV rango) {
+        if (rango != null) {
+            rutinasRiscVPorInicio.put(rango.inicioInclusive(), rango);
+        }
+    }
+
+    public RangoRutinaRiscV obtenerRutinaRiscVEnInicio(int indiceCuarteta) {
+        return rutinasRiscVPorInicio.get(indiceCuarteta);
+    }
+
+    public void marcarAccionRiscV(int indiceCuarteta, AccionCuartetaRiscV accion) {
+        if (indiceCuarteta >= 0 && indiceCuarteta < cuartetas.size() && accion != null) {
+            accionesRiscVPorCuarteta.computeIfAbsent(indiceCuarteta, k -> java.util.EnumSet.noneOf(AccionCuartetaRiscV.class)).add(accion);
+        }
+    }
+
+    public void marcarAccionUltimaCuartetaRiscV(AccionCuartetaRiscV accion) {
+        if (!cuartetas.isEmpty()) {
+            marcarAccionRiscV(cuartetas.size() - 1, accion);
+        }
+    }
+
+    public java.util.Set<AccionCuartetaRiscV> obtenerAccionesRiscV(int indiceCuarteta) {
+        java.util.Set<AccionCuartetaRiscV> res = accionesRiscVPorCuarteta.get(indiceCuarteta);
+        return (res != null) ? res : Collections.emptySet();
+    }
+
     public List<Cuarteta> getCuartetas() {
         return Collections.unmodifiableList(cuartetas);
     }
@@ -105,6 +159,8 @@ public class ContenedorC3D {
         cuartetas.clear();
         gestorTemporales.reiniciar();
         gestorEtiquetas.reiniciar();
+        rutinasRiscVPorInicio.clear();
+        accionesRiscVPorCuarteta.clear();
     }
 
     public String generarCodigoC(String indentacion) {

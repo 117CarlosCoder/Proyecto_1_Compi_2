@@ -1,6 +1,9 @@
 package org.compi2.c3d;
 
+import lombok.Getter;
+
 public class GestorTemporales {
+    @Getter
     private int contador = 0;
 
     public String nuevoTemporal() {

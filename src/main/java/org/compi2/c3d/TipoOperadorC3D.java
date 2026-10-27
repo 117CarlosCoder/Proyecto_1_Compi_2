@@ -1,10 +1,8 @@
 package org.compi2.c3d;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 @Getter
-@RequiredArgsConstructor
 public enum TipoOperadorC3D {
     SUMA("+"),
     RESTA("-"),
@@ -40,4 +38,8 @@ public enum TipoOperadorC3D {
     READ_STR("read_str");
 
     private final String simbolo;
+
+    TipoOperadorC3D(String simbolo) {
+        this.simbolo = simbolo;
+    }
 }

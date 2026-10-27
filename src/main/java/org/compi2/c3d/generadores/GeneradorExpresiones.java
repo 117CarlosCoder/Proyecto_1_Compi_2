@@ -1,5 +1,6 @@
 package org.compi2.c3d.generadores;
 
+import org.compi2.analisis_semantico.Simbolo;
 import org.compi2.ast.NodoAST;
 import org.compi2.ast.expresiones.NodoAccesoArreglo;
 import org.compi2.ast.expresiones.NodoAccesoMiembro;
@@ -51,8 +52,11 @@ public class GeneradorExpresiones {
     }
 
     public String generarLiteral(NodoLiteral literal) {
-        if (literal.getValor() == null) return "0";
+        if (literal.getValor() == null) return "-1";
         TipoBase base = (literal.getTipo() != null) ? literal.getTipo().getBase() : null;
+        if (base == TipoBase.NULO) {
+            return "-1";
+        }
 
         return switch (base) {
             case CADENA -> generarLiteralCadena((String) literal.getValor());
@@ -67,8 +71,9 @@ public class GeneradorExpresiones {
         if (tipo == null || tipo.getBase() == TipoBase.CADENA) {
             return contexto.emitirReadStr();
         }
+        boolean esDecimal = tipo.getBase() == TipoBase.DECIMAL;
         String valor = contexto.getC3d().nuevoTemporal();
-        contexto.emitirReadNum(valor);
+        contexto.emitirReadNum(valor, esDecimal);
         return valor;
     }
 
@@ -86,6 +91,9 @@ public class GeneradorExpresiones {
     }
 
     public String generarIdentificador(NodoIdentificador id) {
+        if ("super".equals(id.getNombre())) {
+            return contexto.leerVariable("this");
+        }
         return contexto.leerVariable(id.getNombre());
     }
 
@@ -151,18 +159,41 @@ public class GeneradorExpresiones {
         contexto.desregistrarTemporalActivo(izquierda);
         String resultado = c3d.nuevoTemporal();
 
+        Tipo tipoIzquierda = operacion.getTipoIzq() != null
+                ? operacion.getTipoIzq()
+                : contexto.resolverTipoEstructura(operacion.getIzq());
+        Tipo tipoDerecha = operacion.getTipoDer() != null
+                ? operacion.getTipoDer()
+                : contexto.resolverTipoEstructura(operacion.getDer());
+
         return switch (operacion.getOperador()) {
             case "+" -> generarSuma(operacion, izquierda, derecha, resultado);
-            case "-" -> emitirOperacionAritmetica(TipoOperadorC3D.RESTA, resultado, izquierda, derecha);
-            case "*" -> emitirOperacionAritmetica(TipoOperadorC3D.MULTIPLICACION, resultado, izquierda, derecha);
+            case "-" -> {
+                String res = emitirOperacionAritmetica(TipoOperadorC3D.RESTA, resultado, izquierda, derecha);
+                if (contexto.requiereEscalarEnteroADecimal(tipoDerecha, tipoIzquierda)) {
+                    contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+                } else if (contexto.requiereEscalarEnteroADecimal(tipoIzquierda, tipoDerecha)) {
+                    contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG2_X10000);
+                }
+                yield res;
+            }
+            case "*" -> {
+                String res = emitirOperacionAritmetica(TipoOperadorC3D.MULTIPLICACION, resultado, izquierda, derecha);
+                boolean izqDec = tipoIzquierda != null && tipoIzquierda.getBase() == TipoBase.DECIMAL;
+                boolean derDec = tipoDerecha != null && tipoDerecha.getBase() == TipoBase.DECIMAL;
+                if (izqDec && derDec) {
+                    contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.MUL_DECIMAL);
+                }
+                yield res;
+            }
             case "/" -> generarDivision(operacion, izquierda, derecha, resultado);
             case "%" -> emitirOperacionAritmetica(TipoOperadorC3D.MODULO, resultado, izquierda, derecha);
-            case "==" -> emitirRelacional(TipoOperadorC3D.IF_IGUAL, izquierda, derecha);
-            case "!=" -> emitirRelacional(TipoOperadorC3D.IF_DIFERENTE, izquierda, derecha);
-            case "<" -> emitirRelacional(TipoOperadorC3D.IF_MENOR, izquierda, derecha);
-            case "<=" -> emitirRelacional(TipoOperadorC3D.IF_MENOR_IGUAL, izquierda, derecha);
-            case ">" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR, izquierda, derecha);
-            case ">=" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR_IGUAL, izquierda, derecha);
+            case "==" -> emitirRelacional(TipoOperadorC3D.IF_IGUAL, izquierda, derecha, tipoIzquierda, tipoDerecha);
+            case "!=" -> emitirRelacional(TipoOperadorC3D.IF_DIFERENTE, izquierda, derecha, tipoIzquierda, tipoDerecha);
+            case "<" -> emitirRelacional(TipoOperadorC3D.IF_MENOR, izquierda, derecha, tipoIzquierda, tipoDerecha);
+            case "<=" -> emitirRelacional(TipoOperadorC3D.IF_MENOR_IGUAL, izquierda, derecha, tipoIzquierda, tipoDerecha);
+            case ">" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR, izquierda, derecha, tipoIzquierda, tipoDerecha);
+            case ">=" -> emitirRelacional(TipoOperadorC3D.IF_MAYOR_IGUAL, izquierda, derecha, tipoIzquierda, tipoDerecha);
             case "&&" -> generarAndLogico(izquierda, derecha, resultado);
             case "||" -> generarOrLogico(izquierda, derecha, resultado);
             default -> "0";
@@ -191,12 +222,20 @@ public class GeneradorExpresiones {
             return contexto.emitirConcatStrStr(convertirCaracterCadena(izquierda), derecha);
         }
         if (izquierdaEsCadena) {
-            return contexto.emitirConcatStrNum(izquierda, derecha);
+            boolean esDec = tipoDerecha != null && tipoDerecha.getBase() == TipoBase.DECIMAL;
+            return contexto.emitirConcatStrNum(izquierda, derecha, esDec);
         }
         if (derechaEsCadena) {
-            return contexto.emitirConcatNumStr(izquierda, derecha);
+            boolean esDec = tipoIzquierda != null && tipoIzquierda.getBase() == TipoBase.DECIMAL;
+            return contexto.emitirConcatNumStr(izquierda, derecha, esDec);
         }
-        return emitirOperacionAritmetica(TipoOperadorC3D.SUMA, resultado, izquierda, derecha);
+        String res = emitirOperacionAritmetica(TipoOperadorC3D.SUMA, resultado, izquierda, derecha);
+        if (contexto.requiereEscalarEnteroADecimal(tipoDerecha, tipoIzquierda)) {
+            contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        } else if (contexto.requiereEscalarEnteroADecimal(tipoIzquierda, tipoDerecha)) {
+            contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG2_X10000);
+        }
+        return res;
     }
 
     private String generarDivision(NodoOperacionBinaria operacion, String izquierda, String derecha, String resultado) {
@@ -216,7 +255,19 @@ public class GeneradorExpresiones {
                 ? TipoOperadorC3D.DIVISION_ENTERA
                 : TipoOperadorC3D.DIVISION;
 
-        return emitirOperacionAritmetica(operador, resultado, izquierda, derecha);
+        String res = emitirOperacionAritmetica(operador, resultado, izquierda, derecha);
+        boolean izqDec = tipoIzquierda != null && tipoIzquierda.getBase() == TipoBase.DECIMAL;
+        boolean derDec = tipoDerecha != null && tipoDerecha.getBase() == TipoBase.DECIMAL;
+        if (izqDec || derDec) {
+            contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.DIV_DECIMAL);
+            if (contexto.requiereEscalarEnteroADecimal(tipoDerecha, tipoIzquierda)) {
+                contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+            }
+            if (contexto.requiereEscalarEnteroADecimal(tipoIzquierda, tipoDerecha)) {
+                contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG2_X10000);
+            }
+        }
+        return res;
     }
 
     private String convertirCaracterCadena(String valorCaracter) {
@@ -236,6 +287,10 @@ public class GeneradorExpresiones {
     }
 
     public String emitirRelacional(TipoOperadorC3D operador, String izquierda, String derecha) {
+        return emitirRelacional(operador, izquierda, derecha, null, null);
+    }
+
+    public String emitirRelacional(TipoOperadorC3D operador, String izquierda, String derecha, Tipo tipoIzquierda, Tipo tipoDerecha) {
         ContenedorC3D c3d = contexto.getC3d();
         String resultado = c3d.nuevoTemporal();
         String verdadero = c3d.nuevaEtiqueta();
@@ -243,6 +298,11 @@ public class GeneradorExpresiones {
         String fin = c3d.nuevaEtiqueta();
 
         c3d.emitirIf(operador, izquierda, derecha, verdadero);
+        if (contexto.requiereEscalarEnteroADecimal(tipoDerecha, tipoIzquierda)) {
+            contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        } else if (contexto.requiereEscalarEnteroADecimal(tipoIzquierda, tipoDerecha)) {
+            contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG2_X10000);
+        }
         c3d.emitirGoto(falso);
 
         return materializarBooleano(resultado, verdadero, falso, fin);
@@ -341,7 +401,9 @@ public class GeneradorExpresiones {
             }
         }
 
-        String base = emitirReservaDimension(dimensiones, 0);
+        String valorDefectoHoja = (arreglo.getTipoComponente() != null
+                && arreglo.getTipoComponente().getBase() == TipoBase.OBJETO_CLASE) ? "-1" : "0";
+        String base = emitirReservaDimension(dimensiones, 0, valorDefectoHoja);
 
         for (String dim : dimensiones) {
             contexto.desregistrarTemporalActivo(dim);
@@ -350,7 +412,7 @@ public class GeneradorExpresiones {
         return base;
     }
 
-    private String emitirReservaDimension(List<String> dimensiones, int nivel) {
+    private String emitirReservaDimension(List<String> dimensiones, int nivel, String valorDefectoHoja) {
         ContenedorC3D c3d = contexto.getC3d();
         String tamano = dimensiones.get(nivel);
         String base = c3d.nuevoTemporal();
@@ -366,9 +428,9 @@ public class GeneradorExpresiones {
         String pos = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, pos, base, idx);
         if (nivel == dimensiones.size() - 1) {
-            c3d.emitirAsignacionHeap(pos, "0");
+            c3d.emitirAsignacionHeap(pos, valorDefectoHoja);
         } else {
-            String subArreglo = emitirReservaDimension(dimensiones, nivel + 1);
+            String subArreglo = emitirReservaDimension(dimensiones, nivel + 1, valorDefectoHoja);
             c3d.emitirAsignacionHeap(pos, subArreglo);
         }
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, idx, idx, "1");
@@ -380,14 +442,34 @@ public class GeneradorExpresiones {
     public String generarInstanciacionObjeto(NodoInstanciacionObjeto objeto) {
         ContenedorC3D c3d = contexto.getC3d();
         String inicioObjeto = c3d.nuevoTemporal();
-        c3d.emitirAsignacion(inicioObjeto, "H");
 
         int tamano = 10;
         Tipo tipoClase = contexto.getTablaSimbolos().buscarTipoCompuesto(objeto.getNombreClase());
         if (tipoClase != null && tipoClase.getCampos() != null) {
             tamano = Math.max(1, tipoClase.getCampos().size());
         }
-        c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", String.valueOf(tamano));
+
+        boolean participaEnHerencia = contexto.participaEnHerencia(objeto.getNombreClase());
+        if (participaEnHerencia) {
+            int idClase = contexto.obtenerIdClase(objeto.getNombreClase());
+            c3d.emitirAsignacionHeap("H", String.valueOf(idClase));
+            c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
+            c3d.emitirAsignacion(inicioObjeto, "H");
+            c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", String.valueOf(tamano));
+        } else {
+            c3d.emitirAsignacion(inicioObjeto, "H");
+            c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", String.valueOf(tamano));
+        }
+
+        if (tipoClase != null && tipoClase.getCampos() != null) {
+            int offsetCampo = 0;
+            for (Tipo tCampo : tipoClase.getCampos().values()) {
+                if (tCampo != null && tCampo.getBase() == TipoBase.OBJETO_CLASE) {
+                    contexto.escribirHeap(inicioObjeto, String.valueOf(offsetCampo), "-1");
+                }
+                offsetCampo++;
+            }
+        }
 
         boolean tieneArgumentos = objeto.getArgumentos() != null && !objeto.getArgumentos().isEmpty();
         boolean tieneConstructor = tieneArgumentos || contexto.getTablaSimbolos().tieneConstructor(objeto.getNombreClase());
@@ -396,7 +478,7 @@ public class GeneradorExpresiones {
                     ? objeto.getConstructorResuelto().getParametros()
                     : List.of();
             String nombreCtor = contexto.resolverEtiquetaConstructor(objeto.getNombreClase(), tiposParams);
-            generarLlamada(nombreCtor, objeto.getArgumentos(), inicioObjeto, false);
+            generarLlamada(nombreCtor, objeto.getArgumentos(), inicioObjeto, false, tiposParams);
         }
         return inicioObjeto;
     }
@@ -409,21 +491,46 @@ public class GeneradorExpresiones {
         String falso = c3d.nuevaEtiqueta();
         String fin = c3d.nuevaEtiqueta();
 
+        Tipo tipoRes = ternaria.getTipoResultado() != null
+                ? ternaria.getTipoResultado()
+                : contexto.resolverTipoEstructura(ternaria);
+        Tipo tipoTrue = ternaria.getTipoTrue() != null
+                ? ternaria.getTipoTrue()
+                : contexto.resolverTipoEstructura(ternaria.getExpresionTrue());
+        Tipo tipoFalse = ternaria.getTipoFalse() != null
+                ? ternaria.getTipoFalse()
+                : contexto.resolverTipoEstructura(ternaria.getExpresionFalse());
+
         c3d.emitirIf(TipoOperadorC3D.IF_DIFERENTE, condicion, "0", verdadero);
         c3d.emitirGoto(falso);
 
         c3d.emitirEtiqueta(verdadero);
         c3d.emitirAsignacion(resultado, generarExpresion(ternaria.getExpresionTrue()));
+        if (contexto.requiereEscalarEnteroADecimal(tipoRes, tipoTrue)) {
+            contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        }
         c3d.emitirGoto(fin);
 
         c3d.emitirEtiqueta(falso);
         c3d.emitirAsignacion(resultado, generarExpresion(ternaria.getExpresionFalse()));
+        if (contexto.requiereEscalarEnteroADecimal(tipoRes, tipoFalse)) {
+            contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        }
         c3d.emitirEtiqueta(fin);
 
         return resultado;
     }
 
     public String generarLlamadaFuncion(NodoLlamadaFuncion llamada) {
+        List<Tipo> tiposParams = llamada.getFuncionResuelta() != null
+                ? llamada.getFuncionResuelta().getParametros()
+                : null;
+        if (tiposParams == null) {
+            Simbolo fGlobal = contexto.getTablaSimbolos().buscarFuncionGlobal(llamada.getNombreFuncion());
+            if (fGlobal != null && fGlobal.getTipo() != null) {
+                tiposParams = fGlobal.getTipo().getParametros();
+            }
+        }
         boolean esMetodoPropio = llamada.isEsMetodoDeClaseActual()
                 || (llamada.getFuncionResuelta() == null && contexto.esMetodoDeThis(llamada.getNombreFuncion()));
         if (esMetodoPropio) {
@@ -431,18 +538,37 @@ public class GeneradorExpresiones {
             String claseObj = llamada.getClaseObjetivoResuelta() != null
                     ? llamada.getClaseObjetivoResuelta()
                     : contexto.obtenerNombreClaseThis();
-            List<Tipo> tiposParams = llamada.getFuncionResuelta() != null
-                    ? llamada.getFuncionResuelta().getParametros()
-                    : List.of();
+            if (tiposParams == null) {
+                tiposParams = List.of();
+            }
+            if (claseObj != null && contexto.tieneSobrescriturasEnSubclase(claseObj, llamada.getNombreFuncion(), tiposParams)) {
+                return generarLlamadaVirtual(claseObj, llamada.getNombreFuncion(), tiposParams, llamada.getArgumentos(), receptor, true);
+            }
             String nombreDestino = (claseObj != null)
                     ? contexto.resolverEtiquetaMetodo(claseObj, llamada.getNombreFuncion(), tiposParams)
                     : llamada.getNombreFuncion();
-            return generarLlamada(nombreDestino, llamada.getArgumentos(), receptor, true);
+            return generarLlamada(nombreDestino, llamada.getArgumentos(), receptor, true, tiposParams);
         }
-        return generarLlamada(llamada.getNombreFuncion(), llamada.getArgumentos(), null, true);
+        return generarLlamada(llamada.getNombreFuncion(), llamada.getArgumentos(), null, true, tiposParams);
     }
 
     public String generarLlamadaMetodo(NodoLlamadaMetodo metodo) {
+        List<Tipo> tiposParams = metodo.getMetodoResuelto() != null
+                ? metodo.getMetodoResuelto().getParametros()
+                : List.of();
+
+        boolean esSuper = metodo.getEstructura() instanceof NodoIdentificador id && "super".equals(id.getNombre());
+        if (esSuper) {
+            String receptor = contexto.leerVariable("this");
+            String claseActual = contexto.obtenerNombreClaseThis();
+            Tipo tipoClase = (claseActual != null) ? contexto.getTablaSimbolos().buscarTipoCompuesto(claseActual) : null;
+            String clasePadre = (tipoClase != null) ? tipoClase.getClasePadre() : null;
+            String nombreDestino = (clasePadre != null)
+                    ? contexto.resolverEtiquetaMetodo(clasePadre, metodo.getNombreMetodo(), tiposParams)
+                    : metodo.getNombreMetodo();
+            return generarLlamada(nombreDestino, metodo.getArgumentos(), receptor, true, tiposParams);
+        }
+
         String receptor = generarExpresion(metodo.getEstructura());
         String claseReceptora = metodo.getClaseObjetivoResuelta();
         if (claseReceptora == null) {
@@ -451,16 +577,19 @@ public class GeneradorExpresiones {
                 claseReceptora = tipoReceptor.getNombreTipo();
             }
         }
-        List<Tipo> tiposParams = metodo.getMetodoResuelto() != null
-                ? metodo.getMetodoResuelto().getParametros()
-                : List.of();
+
+        if (claseReceptora != null && contexto.tieneSobrescriturasEnSubclase(claseReceptora, metodo.getNombreMetodo(), tiposParams)) {
+            return generarLlamadaVirtual(claseReceptora, metodo.getNombreMetodo(), tiposParams, metodo.getArgumentos(), receptor, true);
+        }
+
         String nombreDestino = (claseReceptora != null)
                 ? contexto.resolverEtiquetaMetodo(claseReceptora, metodo.getNombreMetodo(), tiposParams)
                 : metodo.getNombreMetodo();
-        return generarLlamada(nombreDestino, metodo.getArgumentos(), receptor, true);
+        return generarLlamada(nombreDestino, metodo.getArgumentos(), receptor, true, tiposParams);
     }
 
-    private String generarLlamada(String nombre, List<NodoAST> argumentos, String receptor, boolean conRetorno) {
+    public String generarLlamadaVirtual(String claseBase, String nombreMetodo, List<Tipo> tiposParams,
+                                        List<NodoAST> argumentos, String receptor, boolean conRetorno) {
         if (receptor != null) {
             contexto.registrarTemporalActivo(receptor);
         }
@@ -471,7 +600,30 @@ public class GeneradorExpresiones {
             contexto.pasarParametro(desplazamiento + 2, receptor);
             primerParametro = 3;
         }
-        pasarArgumentos(valores, desplazamiento, primerParametro);
+        pasarArgumentos(argumentos, valores, desplazamiento, primerParametro, tiposParams);
+        String retorno = contexto.realizarLlamadaVirtual(claseBase, nombreMetodo, tiposParams, desplazamiento, conRetorno);
+        if (receptor != null) {
+            contexto.desregistrarTemporalActivo(receptor);
+        }
+        return retorno;
+    }
+
+    public String generarLlamada(String nombre, List<NodoAST> argumentos, String receptor, boolean conRetorno) {
+        return generarLlamada(nombre, argumentos, receptor, conRetorno, null);
+    }
+
+    public String generarLlamada(String nombre, List<NodoAST> argumentos, String receptor, boolean conRetorno, List<Tipo> tiposParametros) {
+        if (receptor != null) {
+            contexto.registrarTemporalActivo(receptor);
+        }
+        List<String> valores = evaluarArgumentos(argumentos);
+        int desplazamiento = contexto.calcularDesplazamientoTransicion();
+        int primerParametro = 2;
+        if (receptor != null) {
+            contexto.pasarParametro(desplazamiento + 2, receptor);
+            primerParametro = 3;
+        }
+        pasarArgumentos(argumentos, valores, desplazamiento, primerParametro, tiposParametros);
         String retorno = contexto.realizarLlamadaSubrutina(nombre, desplazamiento, conRetorno);
         if (receptor != null) {
             contexto.desregistrarTemporalActivo(receptor);
@@ -490,11 +642,14 @@ public class GeneradorExpresiones {
         return evaluados;
     }
 
-    private void pasarArgumentos(List<String> argumentos, int desplazamiento, int offsetInicial) {
+    private void pasarArgumentos(List<NodoAST> nodosArgs, List<String> argumentos, int desplazamiento, int offsetInicial, List<Tipo> tiposParams) {
         if (argumentos == null) return;
         for (int i = 0; i < argumentos.size(); i++) {
             String valor = argumentos.get(i);
-            contexto.pasarParametro(desplazamiento + offsetInicial + i, valor);
+            Tipo tipoParam = (tiposParams != null && i < tiposParams.size()) ? tiposParams.get(i) : null;
+            Tipo tipoArg = (nodosArgs != null && i < nodosArgs.size()) ? contexto.resolverTipoEstructura(nodosArgs.get(i)) : null;
+            boolean escalar = contexto.requiereEscalarEnteroADecimal(tipoParam, tipoArg);
+            contexto.pasarParametro(desplazamiento + offsetInicial + i, valor, escalar);
             contexto.desregistrarTemporalActivo(valor);
         }
     }

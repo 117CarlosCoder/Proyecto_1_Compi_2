@@ -5,6 +5,7 @@ import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.ast.expresiones.NodoAccesoArreglo;
 import org.compi2.ast.expresiones.NodoAccesoMiembro;
+import org.compi2.ast.expresiones.NodoExpresionLectura;
 import org.compi2.ast.expresiones.NodoIdentificador;
 import org.compi2.ast.expresiones.NodoLlamadaFuncion;
 import org.compi2.ast.expresiones.NodoLlamadaMetodo;
@@ -19,6 +20,7 @@ import org.compi2.ast.sentencias.NodoFuncion;
 import org.compi2.ast.sentencias.NodoIf;
 import org.compi2.ast.sentencias.NodoImprimir;
 import org.compi2.ast.sentencias.NodoLectura;
+import org.compi2.ast.sentencias.NodoLlamadaSuper;
 import org.compi2.ast.sentencias.NodoRetorno;
 import org.compi2.ast.sentencias.NodoSwitch;
 import org.compi2.ast.sentencias.NodoWhile;
@@ -35,6 +37,7 @@ public class GeneradorC3D {
     @Getter
     private final ContextoC3D contexto;
     private final GeneradorExpresiones generadorExpresiones;
+    private Tipo tipoRetornoActual;
 
     public GeneradorC3D(TablaSimbolos tablaSimbolos) {
         this(new ContenedorC3D(), tablaSimbolos);
@@ -76,6 +79,8 @@ public class GeneradorC3D {
         generarSentencias(instruccionesMain);
         c3d.emitirGoto("L_fin_programa");
 
+        contexto.emitirDespachadoresVirtuales();
+
         for (NodoFuncion funcion : funciones) {
             contexto.emitirDespachadorRetorno(resolverNombreFuncionC3D(funcion));
         }
@@ -112,6 +117,7 @@ public class GeneradorC3D {
     }
 
     public void generarFuncion(NodoFuncion funcion) {
+        this.tipoRetornoActual = funcion.getTipoRetorno();
         String nombreC3D = resolverNombreFuncionC3D(funcion);
         contexto.limpiarLocales();
         contexto.setFuncionActual(nombreC3D);
@@ -126,6 +132,7 @@ public class GeneradorC3D {
 
         contexto.setFuncionActual(null);
         contexto.limpiarLocales();
+        this.tipoRetornoActual = null;
     }
 
     public void generarSentencias(List<NodoAST> instrucciones) {
@@ -154,6 +161,7 @@ public class GeneradorC3D {
             case NodoOperacionUnaria un -> generarExpresion(un);
             case NodoLlamadaFuncion fn -> generarExpresion(fn);
             case NodoLlamadaMetodo met -> generarExpresion(met);
+            case NodoLlamadaSuper llamadaSuper -> generarLlamadaSuper(llamadaSuper);
             default -> {}
         }
     }
@@ -165,16 +173,41 @@ public class GeneradorC3D {
     // --- Generación Individual de Sentencias ---
 
     private void generarDeclaracion(NodoDeclaracion declaracion) {
-        if (declaracion.getValorInicial() == null) return;
+        if (declaracion.getValorInicial() == null) {
+            if (declaracion.getTipoDeclarado() != null
+                    && declaracion.getTipoDeclarado().getBase() == TipoBase.OBJETO_CLASE) {
+                contexto.escribirVariable(declaracion.getNombre(), "-1", false);
+            }
+            return;
+        }
+        if (declaracion.getValorInicial() instanceof NodoExpresionLectura lec && declaracion.getTipoDeclarado() != null) {
+            lec.aplicarTipoEsperado(declaracion.getTipoDeclarado());
+        }
         String valor = generarExpresion(declaracion.getValorInicial());
-        contexto.escribirVariable(declaracion.getNombre(), valor);
+        Tipo tipoOrigen = contexto.resolverTipoEstructura(declaracion.getValorInicial());
+        boolean escalar = contexto.requiereEscalarEnteroADecimal(declaracion.getTipoDeclarado(), tipoOrigen);
+        contexto.escribirVariable(declaracion.getNombre(), valor, escalar);
     }
 
     private void generarAsignacion(NodoAsignacion asignacion) {
+        if (asignacion.getValor() instanceof NodoExpresionLectura lec) {
+            Tipo tipoDest = switch (asignacion.getDestino()) {
+                case NodoIdentificador id -> contexto.obtenerTipoVariable(id.getNombre());
+                case NodoAccesoArreglo arr -> contexto.resolverTipoEstructura(arr);
+                case NodoAccesoMiembro mb -> contexto.resolverTipoEstructura(mb);
+                case null, default -> null;
+            };
+            if (tipoDest != null) {
+                lec.aplicarTipoEsperado(tipoDest);
+            }
+        }
         switch (asignacion.getDestino()) {
             case NodoIdentificador identificador -> {
                 String valor = generarExpresion(asignacion.getValor());
-                contexto.escribirVariable(identificador.getNombre(), valor);
+                Tipo tipoDest = contexto.obtenerTipoVariable(identificador.getNombre());
+                Tipo tipoOrig = contexto.resolverTipoEstructura(asignacion.getValor());
+                boolean escalar = contexto.requiereEscalarEnteroADecimal(tipoDest, tipoOrig);
+                contexto.escribirVariable(identificador.getNombre(), valor, escalar);
             }
             case NodoAccesoArreglo acceso -> generarAsignacionArreglo(acceso, asignacion.getValor());
             case NodoAccesoMiembro acceso -> generarAsignacionCampo(acceso, asignacion.getValor());
@@ -190,7 +223,10 @@ public class GeneradorC3D {
         String valor = generarExpresion(expresion);
         contexto.desregistrarTemporalActivo(indice);
         contexto.desregistrarTemporalActivo(arreglo);
-        contexto.escribirHeap(arreglo, indice, valor);
+        Tipo tipoDest = contexto.resolverTipoEstructura(acceso);
+        Tipo tipoOrig = contexto.resolverTipoEstructura(expresion);
+        boolean escalar = contexto.requiereEscalarEnteroADecimal(tipoDest, tipoOrig);
+        contexto.escribirHeap(arreglo, indice, valor, escalar);
     }
 
     private void generarAsignacionCampo(NodoAccesoMiembro acceso, NodoAST expresion) {
@@ -199,25 +235,31 @@ public class GeneradorC3D {
         int offset = contexto.obtenerOffsetCampo(acceso.getEstructura(), acceso.getNombreCampo());
         String valor = generarExpresion(expresion);
         contexto.desregistrarTemporalActivo(objeto);
-        contexto.escribirHeap(objeto, String.valueOf(offset), valor);
+        Tipo tipoDest = contexto.resolverTipoEstructura(acceso);
+        Tipo tipoOrig = contexto.resolverTipoEstructura(expresion);
+        boolean escalar = contexto.requiereEscalarEnteroADecimal(tipoDest, tipoOrig);
+        contexto.escribirHeap(objeto, String.valueOf(offset), valor, escalar);
     }
 
     private void generarLectura(NodoLectura lectura) {
         if (lectura.getDestino() == null) {
             String valorIgnorado = contexto.getC3d().nuevoTemporal();
-            contexto.emitirReadNum(valorIgnorado);
+            contexto.emitirReadNum(valorIgnorado, false);
             return;
         }
 
         Tipo tipo = lectura.getTipoDestino();
         boolean esCadena = (tipo != null && tipo.getBase() == TipoBase.CADENA);
 
+        Tipo tipoDest = (tipo != null) ? tipo : contexto.resolverTipoEstructura(lectura.getDestino());
+        boolean esDecimal = (tipoDest != null && tipoDest.getBase() == TipoBase.DECIMAL);
+
         String valor;
         if (esCadena) {
             valor = contexto.emitirReadStr();
         } else {
             valor = contexto.getC3d().nuevoTemporal();
-            contexto.emitirReadNum(valor);
+            contexto.emitirReadNum(valor, esDecimal);
         }
 
         switch (lectura.getDestino()) {
@@ -443,10 +485,39 @@ public class GeneradorC3D {
             if (retorno.getExpresion() != null) {
                 String valor = generarExpresion(retorno.getExpresion());
                 c3d.emitirAsignacionStack("P", valor);
+                Tipo tipoOrig = contexto.resolverTipoEstructura(retorno.getExpresion());
+                if (contexto.requiereEscalarEnteroADecimal(tipoRetornoActual, tipoOrig)) {
+                    contexto.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+                }
             }
             c3d.emitirGoto("exit_" + contexto.getFuncionActual());
         } else {
             c3d.emitirGoto("L_fin_programa");
         }
+    }
+
+    private void generarLlamadaSuper(NodoLlamadaSuper llamadaSuper) {
+        String receptorThis = contexto.leerVariable("this");
+        String claseActual = contexto.obtenerNombreClaseThis();
+        Tipo tipoClase = (claseActual != null) ? contexto.getTablaSimbolos().buscarTipoCompuesto(claseActual) : null;
+        String clasePadre = llamadaSuper.getClasePadreResuelta();
+        if (clasePadre == null && tipoClase != null) {
+            clasePadre = tipoClase.getClasePadre();
+        }
+        if (clasePadre == null || !contexto.getTablaSimbolos().tieneConstructor(clasePadre)) {
+            return;
+        }
+
+        List<Tipo> tiposArgs = new ArrayList<>();
+        if (llamadaSuper.getConstructorResuelto() != null) {
+            tiposArgs = llamadaSuper.getConstructorResuelto().getParametros();
+        } else if (llamadaSuper.getArgumentos() != null) {
+            for (NodoAST arg : llamadaSuper.getArgumentos()) {
+                tiposArgs.add(contexto.resolverTipoEstructura(arg));
+            }
+        }
+
+        String nombreCtorPadre = contexto.resolverEtiquetaConstructor(clasePadre, tiposArgs);
+        generadorExpresiones.generarLlamada(nombreCtorPadre, llamadaSuper.getArgumentos(), receptorThis, false, tiposArgs);
     }
 }

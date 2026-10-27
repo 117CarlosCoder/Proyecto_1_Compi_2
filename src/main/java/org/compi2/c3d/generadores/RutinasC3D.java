@@ -299,16 +299,29 @@ final class RutinasC3D {
     }
 
     String emitirConcatStrNum(String p1, String num) {
-        String tempNumeroCadena = emitirNumeroAHeap(num);
+        return emitirConcatStrNum(p1, num, false);
+    }
+
+    String emitirConcatStrNum(String p1, String num, boolean esDecimal) {
+        String tempNumeroCadena = emitirNumeroAHeap(num, esDecimal);
         return emitirConcatStrStr(p1, tempNumeroCadena);
     }
 
     String emitirConcatNumStr(String num, String p2) {
-        String tempNumeroCadena = emitirNumeroAHeap(num);
+        return emitirConcatNumStr(num, p2, false);
+    }
+
+    String emitirConcatNumStr(String num, String p2, boolean esDecimal) {
+        String tempNumeroCadena = emitirNumeroAHeap(num, esDecimal);
         return emitirConcatStrStr(tempNumeroCadena, p2);
     }
 
     String emitirNumeroAHeap(String num) {
+        return emitirNumeroAHeap(num, false);
+    }
+
+    String emitirNumeroAHeap(String num, boolean esDecimal) {
+        int inicio = c3d.size();
         String tempBaseHeap = c3d.nuevoTemporal();
         c3d.emitirAsignacion(tempBaseHeap, "H");
 
@@ -326,6 +339,17 @@ final class RutinasC3D {
 
         // 4. Centinela de fin de cadena (-1)
         cerrarCadenaEnHeap();
+
+        int fin = c3d.size();
+        if (esDecimal) {
+            c3d.registrarRutinaRiscV(new ContenedorC3D.RangoRutinaRiscV(
+                    ContenedorC3D.TipoRutinaRiscV.DECIMAL_TO_HEAP,
+                    inicio,
+                    fin,
+                    num,
+                    tempBaseHeap
+            ));
+        }
 
         return tempBaseHeap;
     }
