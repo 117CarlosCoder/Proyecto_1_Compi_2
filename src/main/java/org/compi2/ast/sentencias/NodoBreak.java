@@ -10,10 +10,14 @@ import org.compi2.tipos.Tipo;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoBreak implements NodoAST {
     private final int linea;
     private final int columna;
+
+    public NodoBreak(int linea, int columna) {
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

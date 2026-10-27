@@ -13,12 +13,18 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoAsignacion implements NodoAST {
     private final NodoAST destino;
     private final NodoAST valor;
     private final int linea;
     private final int columna;
+
+    public NodoAsignacion(NodoAST destino, NodoAST valor, int linea, int columna) {
+        this.destino = destino;
+        this.valor = valor;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

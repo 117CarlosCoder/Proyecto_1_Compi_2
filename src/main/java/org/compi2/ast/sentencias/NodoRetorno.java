@@ -13,11 +13,16 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoRetorno implements NodoAST {
-    private final NodoAST expresion; // null si es 'return;' vacío
+    private final NodoAST expresion;
     private final int linea;
     private final int columna;
+
+    public NodoRetorno(NodoAST expresion, int linea, int columna) {
+        this.expresion = expresion;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
@@ -32,7 +37,8 @@ public class NodoRetorno implements NodoAST {
         if (esperado != null && obtenido.getBase() != TipoBase.ERROR) {
             boolean compatible = (esperado.getBase() == TipoBase.VOID)
                     ? (expresion == null)
-                    : (expresion != null && ComprobadorTipos.esCompatibleAsignacion(esperado, obtenido));
+                    : (expresion != null && (ComprobadorTipos.esCompatibleAsignacion(esperado, obtenido)
+                            || (obtenido.getBase() == TipoBase.NULO && esperado.getBase().esNumerico())));
             if (!compatible) {
                 errores.add(new ErrorSemantico(
                         String.format("Tipo de retorno incompatible: se esperaba '%s' pero se retornó '%s'.", esperado,

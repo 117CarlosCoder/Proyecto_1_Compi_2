@@ -1,6 +1,5 @@
 package org.compi2.ast.expresiones;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
@@ -11,12 +10,18 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoInstanciacionArreglo implements NodoAST {
     private final Tipo tipoComponente;
     private final List<NodoAST> tamanosDimensiones;
     private final int linea;
     private final int columna;
+
+    public NodoInstanciacionArreglo(Tipo tipoComponente, List<NodoAST> tamanosDimensiones, int linea, int columna) {
+        this.tipoComponente = tipoComponente;
+        this.tamanosDimensiones = tamanosDimensiones;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

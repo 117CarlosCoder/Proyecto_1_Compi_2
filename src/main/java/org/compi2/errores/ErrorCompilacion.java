@@ -1,16 +1,22 @@
 package org.compi2.errores;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
-@AllArgsConstructor
 public class ErrorCompilacion {
     protected final TipoError tipo;
     protected final String mensaje;
     protected final String origen;
     protected final int linea;
     protected final int columna;
+
+    public ErrorCompilacion(TipoError tipo, String mensaje, String origen, int linea, int columna) {
+        this.tipo = tipo;
+        this.mensaje = mensaje;
+        this.origen = origen;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     public String getArchivo() {
         return origen;

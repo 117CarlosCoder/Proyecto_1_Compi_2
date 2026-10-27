@@ -13,7 +13,6 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoSwitch implements NodoAST {
     private final NodoAST expresionControl;
     private final List<CasoSwitch> casos;
@@ -21,15 +20,29 @@ public class NodoSwitch implements NodoAST {
     private final int linea;
     private final int columna;
 
+    public NodoSwitch(NodoAST expresionControl, List<CasoSwitch> casos, List<NodoAST> casoDefecto, int linea, int columna) {
+        this.expresionControl = expresionControl;
+        this.casos = casos;
+        this.casoDefecto = casoDefecto;
+        this.linea = linea;
+        this.columna = columna;
+    }
+
     private Tipo tipoControl;
 
     @Getter
-    @AllArgsConstructor
     public static class CasoSwitch {
         private final NodoAST valorCaso;
         private final List<NodoAST> instrucciones;
         private final int linea;
         private final int columna;
+
+        public CasoSwitch(NodoAST valorCaso, List<NodoAST> instrucciones, int linea, int columna) {
+            this.valorCaso = valorCaso;
+            this.instrucciones = instrucciones;
+            this.linea = linea;
+            this.columna = columna;
+        }
     }
 
     @Override

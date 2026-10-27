@@ -11,11 +11,16 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoListaValores implements NodoAST {
     private final List<NodoAST> elementos;
     private final int linea;
     private final int columna;
+
+    public NodoListaValores(List<NodoAST> elementos, int linea, int columna) {
+        this.elementos = elementos;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

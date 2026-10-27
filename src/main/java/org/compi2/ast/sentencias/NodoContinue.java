@@ -1,6 +1,5 @@
 package org.compi2.ast.sentencias;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
@@ -10,10 +9,14 @@ import org.compi2.tipos.Tipo;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoContinue implements NodoAST {
     private final int linea;
     private final int columna;
+
+    public NodoContinue(int linea, int columna) {
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

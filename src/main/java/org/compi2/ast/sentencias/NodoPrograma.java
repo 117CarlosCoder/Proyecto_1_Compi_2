@@ -15,11 +15,16 @@ import java.util.List;
 public class NodoPrograma implements ModuloSemantico {
 
     @Getter
-    @AllArgsConstructor
     public static class InfoImport {
         private final String ruta;
         private final int linea;
         private final int columna;
+
+        public InfoImport(String ruta, int linea, int columna) {
+            this.ruta = ruta;
+            this.linea = linea;
+            this.columna = columna;
+        }
     }
 
     private final List<String> importaciones = new ArrayList<>();

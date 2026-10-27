@@ -10,10 +10,14 @@ import org.compi2.tipos.Tipo;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoExpresionLectura implements NodoAST {
     private final int linea;
     private final int columna;
+
+    public NodoExpresionLectura(int linea, int columna) {
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     private Tipo tipoResuelto = Tipo.CADENA;
 

@@ -1,6 +1,5 @@
 package org.compi2.ast.sentencias;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
@@ -11,7 +10,6 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoFor implements NodoAST {
     private final NodoAST inicializacion;
     private final NodoAST condicion;
@@ -19,6 +17,15 @@ public class NodoFor implements NodoAST {
     private final List<NodoAST> cuerpo;
     private final int linea;
     private final int columna;
+
+    public NodoFor(NodoAST inicializacion, NodoAST condicion, NodoAST paso, List<NodoAST> cuerpo, int linea, int columna) {
+        this.inicializacion = inicializacion;
+        this.condicion = condicion;
+        this.paso = paso;
+        this.cuerpo = cuerpo;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

@@ -12,7 +12,6 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoOperacionBinaria implements NodoAST {
     private final NodoAST izq;
     private final String operador;
@@ -20,8 +19,17 @@ public class NodoOperacionBinaria implements NodoAST {
     private final int linea;
     private final int columna;
 
+    public NodoOperacionBinaria(NodoAST izq, String operador, NodoAST der, int linea, int columna) {
+        this.izq = izq;
+        this.operador = operador;
+        this.der = der;
+        this.linea = linea;
+        this.columna = columna;
+    }
+
     private Tipo tipoIzq;
     private Tipo tipoDer;
+    private Tipo tipoResultado;
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
@@ -49,6 +57,7 @@ public class NodoOperacionBinaria implements NodoAST {
                 columna
             ));
         }
+        this.tipoResultado = res;
         return res;
     }
 }

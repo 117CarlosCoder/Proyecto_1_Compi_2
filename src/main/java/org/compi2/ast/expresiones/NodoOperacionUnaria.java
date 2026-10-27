@@ -29,8 +29,16 @@ public class NodoOperacionUnaria implements NodoAST {
         this(operador, expresion, linea, columna, true);
     }
 
+    private Tipo tipoResultado;
+
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
+        Tipo res = comprobarInterno(tablaSimbolos, errores);
+        this.tipoResultado = res;
+        return res;
+    }
+
+    private Tipo comprobarInterno(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         Tipo tipoExp = expresion.comprobar(tablaSimbolos, errores);
         if (tipoExp.getBase() == TipoBase.ERROR)
             return Tipo.ERROR;

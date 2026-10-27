@@ -10,11 +10,16 @@ import org.compi2.tipos.Tipo;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoLectura implements NodoAST {
     private final NodoAST destino;
     private final int linea;
     private final int columna;
+
+    public NodoLectura(NodoAST destino, int linea, int columna) {
+        this.destino = destino;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     private Tipo tipoDestino;
 

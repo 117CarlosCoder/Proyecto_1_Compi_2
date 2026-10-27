@@ -11,12 +11,18 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoWhile implements NodoAST {
     private final NodoAST condicion;
     private final List<NodoAST> instrucciones;
     private final int linea;
     private final int columna;
+
+    public NodoWhile(NodoAST condicion, List<NodoAST> instrucciones, int linea, int columna) {
+        this.condicion = condicion;
+        this.instrucciones = instrucciones;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

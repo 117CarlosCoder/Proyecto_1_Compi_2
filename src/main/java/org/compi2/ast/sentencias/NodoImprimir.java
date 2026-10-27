@@ -1,7 +1,6 @@
 package org.compi2.ast.sentencias;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
@@ -11,12 +10,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoImprimir implements NodoAST {
     private final List<NodoAST> expresiones;
     private final boolean conSaltoLinea;
     private final int linea;
     private final int columna;
+
+    public NodoImprimir(List<NodoAST> expresiones, boolean conSaltoLinea, int linea, int columna) {
+        this.expresiones = expresiones;
+        this.conSaltoLinea = conSaltoLinea;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     private final List<Tipo> tiposExpresiones = new ArrayList<>();
 

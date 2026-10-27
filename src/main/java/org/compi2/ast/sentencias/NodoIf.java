@@ -11,13 +11,20 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoIf implements NodoAST {
     private final NodoAST condicion;
     private final List<NodoAST> instruccionesSi;
     private final List<NodoAST> instruccionesAliter;
     private final int linea;
     private final int columna;
+
+    public NodoIf(NodoAST condicion, List<NodoAST> instruccionesSi, List<NodoAST> instruccionesAliter, int linea, int columna) {
+        this.condicion = condicion;
+        this.instruccionesSi = instruccionesSi;
+        this.instruccionesAliter = instruccionesAliter;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {

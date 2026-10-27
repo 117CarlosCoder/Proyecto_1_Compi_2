@@ -12,13 +12,24 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoExpresionTernaria implements NodoAST {
     private final NodoAST condicion;
     private final NodoAST expresionTrue;
     private final NodoAST expresionFalse;
     private final int linea;
     private final int columna;
+
+    public NodoExpresionTernaria(NodoAST condicion, NodoAST expresionTrue, NodoAST expresionFalse, int linea, int columna) {
+        this.condicion = condicion;
+        this.expresionTrue = expresionTrue;
+        this.expresionFalse = expresionFalse;
+        this.linea = linea;
+        this.columna = columna;
+    }
+
+    private Tipo tipoTrue;
+    private Tipo tipoFalse;
+    private Tipo tipoResultado;
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
@@ -32,10 +43,11 @@ public class NodoExpresionTernaria implements NodoAST {
                     ambito, linea, columna));
         }
 
-        Tipo tipoTrue = expresionTrue.comprobar(tablaSimbolos, errores);
-        Tipo tipoFalse = expresionFalse.comprobar(tablaSimbolos, errores);
+        this.tipoTrue = expresionTrue.comprobar(tablaSimbolos, errores);
+        this.tipoFalse = expresionFalse.comprobar(tablaSimbolos, errores);
 
         if (tipoTrue.getBase() == TipoBase.ERROR || tipoFalse.getBase() == TipoBase.ERROR) {
+            this.tipoResultado = Tipo.ERROR;
             return Tipo.ERROR;
         }
 
@@ -47,6 +59,7 @@ public class NodoExpresionTernaria implements NodoAST {
                     ambito, linea, columna));
         }
 
+        this.tipoResultado = resultado;
         return resultado;
     }
 }

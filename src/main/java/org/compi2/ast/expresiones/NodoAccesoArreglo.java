@@ -11,12 +11,18 @@ import org.compi2.tipos.TipoBase;
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoAccesoArreglo implements NodoAST {
     private final NodoAST estructura;
     private final NodoAST indice;
     private final int linea;
     private final int columna;
+
+    public NodoAccesoArreglo(NodoAST estructura, NodoAST indice, int linea, int columna) {
+        this.estructura = estructura;
+        this.indice = indice;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
