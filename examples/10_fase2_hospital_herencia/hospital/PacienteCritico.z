@@ -1,0 +1,24 @@
+public class PacienteCritico extends Paciente {
+    private int diasUci;
+    private boolean requiereRespirador;
+
+    public PacienteCritico(int expediente, String nombre, int edad, double tarifaBase, int diasUci, boolean requiereRespirador) {
+        super(expediente, nombre, edad, 1, tarifaBase);
+        this.diasUci = diasUci;
+        this.requiereRespirador = requiereRespirador;
+    }
+
+    @Override
+    public String clasificarTriaje() {
+        return "UCI-" + super.clasificarTriaje();
+    }
+
+    @Override
+    public double calcularCostoAtencion() {
+        double base = super.calcularCostoAtencion();
+        double costoUci = diasUci * 450.5;
+        double extraResp = requiereRespirador ? 600.25 : 0;
+        return base + costoUci + extraResp;
+    }
+}
+

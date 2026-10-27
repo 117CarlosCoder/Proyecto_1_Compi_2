@@ -1,0 +1,62 @@
+public class MiembroUniversitario {
+    private int id;
+    int auditoriasInternas = 0;
+    protected String nombre;
+    protected double estipendioBase;
+
+    public MiembroUniversitario(int id, String nombre, double estipendioBase) {
+        this.id = id;
+        this.nombre = nombre;
+        this.estipendioBase = estipendioBase;
+        this.auditoriasInternas = 1;
+    }
+
+    public MiembroUniversitario(int id, String nombre) {
+        this.id = id;
+        this.nombre = nombre;
+        this.estipendioBase = 1000;
+        this.auditoriasInternas = 1;
+    }
+
+    protected void registrarAuditoria() {
+        auditoriasInternas++;
+    }
+
+    public int getAuditorias() {
+        return auditoriasInternas;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    protected double calcularImpuesto(double bruto) {
+        return bruto * 0.10;
+    }
+
+    public String obtenerRol() {
+        return "Miembro";
+    }
+
+    public double calcularIngresoBruto() {
+        return estipendioBase;
+    }
+
+    public double calcularIngresoNeto() {
+        double bruto = this.calcularIngresoBruto();
+        return bruto - calcularImpuesto(bruto);
+    }
+
+    public MiembroUniversitario obtenerRepresentante() {
+        return this;
+    }
+
+    public void imprimirResumen() {
+        println("[" + this.obtenerRol() + "] " + nombre + " | Bruto: " + this.calcularIngresoBruto() + " | Neto: " + this.calcularIngresoNeto() + " | Aud: " + auditoriasInternas);
+    }
+}
+

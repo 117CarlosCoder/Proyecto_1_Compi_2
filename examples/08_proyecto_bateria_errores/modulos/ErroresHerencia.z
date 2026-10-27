@@ -1,0 +1,96 @@
+// Bateria cruel de errores semanticos de POO, Herencia y Encapsulamiento (Fase 2)
+
+public class CicloA extends CicloB {
+    public int a;
+}
+
+public class CicloB extends CicloA {
+    public int b;
+}
+
+public class Base {
+    private int clavePrivada = 42;
+    int secretoDefault = 99;
+    protected int codigoProtegido = 7;
+    public String etiqueta = "BASE";
+
+    public Base(int codigo) {
+        this.codigoProtegido = codigo;
+    }
+
+    private void metodoPrivado() {
+        println("privado");
+    }
+
+    void metodoDefault() {
+        println("default sin paquetes");
+    }
+
+    protected boolean validar() {
+        return codigoProtegido > 0;
+    }
+
+    public double calcularBono() {
+        return 100.5;
+    }
+
+    public int obtenerCodigo() {
+        return codigoProtegido;
+    }
+
+    public void describir() {
+        println(etiqueta);
+    }
+}
+
+// Error: Base no tiene constructor vacio y HijoSinSuper no declara constructor con super(...)
+public class HijoSinSuper extends Base {
+    public int extra;
+}
+
+public class HijoInvalido extends Base {
+    public int nivel;
+
+    public HijoInvalido(int codigo) {
+        // Error: super(...) debe ser la primera instruccion del constructor
+        this.nivel = 1;
+        super(codigo);
+        // Error: solo se permite una llamada a super(...) en el constructor
+        super(codigo);
+    }
+
+    // Error: sobrescribe describir() de Base pero omite @Override obligatorio
+    public void describir() {
+        // Error: acceso a miembro private de la superclase
+        println(clavePrivada);
+        // Error: acceso a miembro default (package-private sin paquetes = private) de la superclase
+        println(secretoDefault);
+        metodoPrivado();
+        metodoDefault();
+    }
+
+    // Error: tiene @Override pero no existe en la superclase Base
+    @Override
+    public void metodoFantasma() {
+        println("no existe en Base");
+    }
+
+    // Error: reduce la visibilidad de public a protected en @Override
+    @Override
+    protected double calcularBono() {
+        return 200.0;
+    }
+
+    // Error: reduce la visibilidad de protected a private en @Override
+    @Override
+    private boolean validar() {
+        return true;
+    }
+
+    // Error: tipo de retorno primitivo incompatible en @Override (double vs int)
+    @Override
+    public double obtenerCodigo() {
+        return 1.5;
+    }
+}
+

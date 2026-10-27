@@ -1,0 +1,48 @@
+public class Facultad {
+    private String nombreFacultad;
+    private MiembroUniversitario[] nomina = new MiembroUniversitario[6];
+    private int registrados = 0;
+
+    public Facultad(String nombreFacultad) {
+        this.nombreFacultad = nombreFacultad;
+    }
+
+    public void registrar(MiembroUniversitario m) {
+        if (registrados < 6) {
+            nomina[registrados] = m;
+            registrados++;
+        }
+    }
+
+    public MiembroUniversitario buscarPorId(int idBuscado) {
+        for (int i = 0; i < 6; i++) {
+            if (nomina[i] != null && nomina[i].getId() == idBuscado) {
+                return nomina[i];
+            }
+        }
+        return null;
+    }
+
+    public double calcularPlanillaNetaTotal() {
+        double total = 0;
+        for (int i = 0; i < 6; i++) {
+            if (nomina[i] == null) {
+                continue;
+            }
+            total += nomina[i].calcularIngresoNeto();
+        }
+        return total;
+    }
+
+    public void generarReporte() {
+        println("=== FACULTAD: " + nombreFacultad + " ===");
+        for (int i = 0; i < 6; i++) {
+            if (nomina[i] != null) {
+                nomina[i].imprimirResumen();
+                println("Representante de " + nomina[i].getNombre() + ": " + nomina[i].obtenerRepresentante().getNombre());
+            }
+        }
+        println("Planilla Neta Total: " + calcularPlanillaNetaTotal());
+    }
+}
+

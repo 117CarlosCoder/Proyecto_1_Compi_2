@@ -1,0 +1,30 @@
+public class Persona {
+    private int expediente;
+    protected String nombre;
+    protected int edad;
+
+    public Persona() {
+        this.expediente = 0;
+        this.nombre = "Anonimo";
+        this.edad = 30;
+    }
+
+    public Persona(int expediente, String nombre, int edad) {
+        this.expediente = expediente;
+        this.nombre = nombre;
+        this.edad = edad;
+    }
+
+    public int getExpediente() {
+        return expediente;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String obtenerResumen() {
+        return "Exp#" + expediente + " " + nombre + " (" + edad + " anios)";
+    }
+}
+

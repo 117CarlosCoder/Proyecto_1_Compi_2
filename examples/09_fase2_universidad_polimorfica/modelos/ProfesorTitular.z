@@ -1,0 +1,29 @@
+public class ProfesorTitular extends EmpleadoAcademico {
+    private int publicaciones;
+
+    public ProfesorTitular(int id, String nombre, double salarioBase, int antiguedad, int publicaciones) {
+        super(id, nombre, salarioBase + 500, antiguedad);
+        this.publicaciones = publicaciones;
+        registrarAuditoria();
+    }
+
+    @Override
+    public String obtenerRol() {
+        return "ProfesorTitular";
+    }
+
+    @Override
+    public double calcularIngresoBruto() {
+        double basePadre = super.calcularIngresoBruto();
+        double incentivo = (publicaciones >= 4)
+            ? calcularBonoEditorial(publicaciones, 125.25)
+            : 200;
+        return basePadre + incentivo;
+    }
+
+    @Override
+    public ProfesorTitular obtenerRepresentante() {
+        return this;
+    }
+}
+

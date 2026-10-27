@@ -1,0 +1,38 @@
+public class SalaEmergencia {
+    private String nombreSala;
+    private Paciente cabeza;
+
+    public SalaEmergencia(String nombreSala) {
+        this.nombreSala = nombreSala;
+    }
+
+    public void ingresar(Paciente nuevo) {
+        if (cabeza == null) {
+            cabeza = nuevo;
+            return;
+        }
+        Paciente actual = cabeza;
+        while (actual.siguiente != null) {
+            actual = actual.siguiente;
+        }
+        actual.siguiente = nuevo;
+    }
+
+    public double calcularFacturacionRecursiva(Paciente nodo) {
+        if (nodo == null) {
+            return 0;
+        }
+        return nodo.calcularCostoAtencion() + calcularFacturacionRecursiva(nodo.siguiente);
+    }
+
+    public void atenderCola() {
+        println("=== SALA: " + nombreSala + " ===");
+        Paciente actual = cabeza;
+        while (actual != null) {
+            println(actual.obtenerResumen());
+            actual = actual.siguiente;
+        }
+        println("Facturacion Total Sala: " + calcularFacturacionRecursiva(cabeza));
+    }
+}
+

@@ -1,0 +1,52 @@
+public class EmpleadoAcademico extends MiembroUniversitario {
+    protected int antiguedad;
+    protected double bonoCargo = 0;
+    protected EmpleadoAcademico supervisor;
+
+    public EmpleadoAcademico(int id, String nombre, double salarioBase, int antiguedad) {
+        super(id, nombre, salarioBase);
+        this.antiguedad = antiguedad;
+        registrarAuditoria();
+    }
+
+    public EmpleadoAcademico(int id, String nombre, int antiguedad) {
+        super(id, nombre);
+        this.antiguedad = antiguedad;
+        registrarAuditoria();
+    }
+
+    public void asignarSupervisor(EmpleadoAcademico sup) {
+        this.supervisor = sup;
+    }
+
+    public EmpleadoAcademico obtenerSupervisor() {
+        return supervisor;
+    }
+
+    public void asignarBono(int montoFijo) {
+        bonoCargo += montoFijo;
+    }
+
+    public void asignarBono(double porcentaje, boolean duplicarSiAntiguo) {
+        double extra = (duplicarSiAntiguo && antiguedad >= 5)
+            ? estipendioBase * porcentaje * 2
+            : estipendioBase * porcentaje;
+        bonoCargo += extra;
+    }
+
+    @Override
+    public String obtenerRol() {
+        return "EmpleadoAcademico";
+    }
+
+    @Override
+    public double calcularIngresoBruto() {
+        return super.calcularIngresoBruto() + (antiguedad * 150.5) + bonoCargo;
+    }
+
+    @Override
+    public EmpleadoAcademico obtenerRepresentante() {
+        return (supervisor != null) ? supervisor : this;
+    }
+}
+

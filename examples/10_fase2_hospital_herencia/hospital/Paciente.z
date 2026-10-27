@@ -1,0 +1,42 @@
+public class Paciente extends Persona {
+    protected int nivelUrgencia;
+    protected double tarifaBase;
+    public Paciente siguiente;
+
+    public Paciente(int expediente, String nombre, int edad, int nivelUrgencia, double tarifaBase) {
+        super(expediente, nombre, edad);
+        this.nivelUrgencia = nivelUrgencia;
+        this.tarifaBase = tarifaBase;
+    }
+
+    // Constructor que omite super() explicitamente: prueba llamada automatica al constructor vacio Persona()
+    public Paciente(String nombre, int nivelUrgencia) {
+        this.nombre = nombre;
+        this.nivelUrgencia = nivelUrgencia;
+        this.tarifaBase = 300.5;
+    }
+
+    public String clasificarTriaje() {
+        switch (nivelUrgencia) {
+            case 1:
+                return "ROJO";
+            case 2:
+                return "NARANJA";
+            case 3:
+                return "AMARILLO";
+            default:
+                return "VERDE";
+        }
+    }
+
+    public double calcularCostoAtencion() {
+        double recargoEdad = (edad >= 60) ? 120.25 : 0;
+        return tarifaBase + recargoEdad;
+    }
+
+    @Override
+    public String obtenerResumen() {
+        return super.obtenerResumen() + " [" + this.clasificarTriaje() + "] Costo: " + this.calcularCostoAtencion();
+    }
+}
+

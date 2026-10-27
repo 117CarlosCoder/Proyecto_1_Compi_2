@@ -1,0 +1,23 @@
+public class EstudianteBecado extends MiembroUniversitario {
+    private int promedio;
+    private double descuentoColegiatura;
+
+    public EstudianteBecado(int id, String nombre, int promedio, double descuento) {
+        super(id, nombre, 800);
+        this.promedio = promedio;
+        this.descuentoColegiatura = descuento;
+        registrarAuditoria();
+    }
+
+    @Override
+    public String obtenerRol() {
+        return "EstudianteBecado";
+    }
+
+    @Override
+    public double calcularIngresoBruto() {
+        double ajuste = (promedio >= 90) ? 250.5 : (0 - descuentoColegiatura);
+        return super.calcularIngresoBruto() + ajuste;
+    }
+}
+
