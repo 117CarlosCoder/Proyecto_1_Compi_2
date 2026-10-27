@@ -27,6 +27,9 @@ public class ResultadoCompilacion {
     private String codigoC3D;
 
     @Setter
+    private String codigoRiscV;
+
+    @Setter
     private ContenedorC3D contenedorC3D;
 
     public ResultadoCompilacion(boolean exitoso, NodoPrograma astPrincipal,

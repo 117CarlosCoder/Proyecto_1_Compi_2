@@ -2,11 +2,13 @@ package org.compi2.analisis_semantico;
 
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
+import org.compi2.tipos.Visibilidad;
 
 import java.util.*;
 
 public class TablaSimbolos {
     private final Stack<Ambito> pilaAmbitos = new Stack<>();
+    private final Stack<String> pilaClases = new Stack<>();
     private final List<Simbolo> registroHistorico = new ArrayList<>();
     private final Map<String, Tipo> catalogoTiposCompuestos = new HashMap<>();
     private final Map<String, Simbolo> catalogoFuncionesGlobales = new HashMap<>();
@@ -20,6 +22,7 @@ public class TablaSimbolos {
 
     public void reiniciar() {
         pilaAmbitos.clear();
+        pilaClases.clear();
         registroHistorico.clear();
         catalogoTiposCompuestos.clear();
         catalogoFuncionesGlobales.clear();
@@ -27,6 +30,97 @@ public class TablaSimbolos {
         lenguajeActual = "Pig Latin";
         archivoActual = "principal.pig";
         pilaAmbitos.push(new Ambito(null, "Global", true));
+    }
+
+    public void entrarClase(String nombreClase) {
+        if (nombreClase != null) {
+            pilaClases.push(nombreClase);
+        }
+    }
+
+    public void salirClase() {
+        if (!pilaClases.isEmpty()) {
+            pilaClases.pop();
+        }
+    }
+
+    public String getClaseActual() {
+        if (!pilaClases.isEmpty()) {
+            return pilaClases.peek();
+        }
+        Ambito a = getAmbitoActual();
+        while (a != null) {
+            if (a.getNombreAmbito() != null && a.getNombreAmbito().startsWith("Clase_")) {
+                return a.getNombreAmbito().substring("Clase_".length());
+            }
+            if (a.getNombreAmbito() != null && a.getNombreAmbito().startsWith("Constructor_")) {
+                return a.getNombreAmbito().substring("Constructor_".length());
+            }
+            a = a.getPadre();
+        }
+        return null;
+    }
+
+    public String obtenerClaseActual() {
+        return getClaseActual();
+    }
+
+    public boolean estaEnConstructor() {
+        Ambito a = getAmbitoActual();
+        while (a != null) {
+            if (a.getNombreAmbito() != null) {
+                if (a.getNombreAmbito().startsWith("Constructor_")) return true;
+                if (a.getNombreAmbito().startsWith("Funcion_")) return false;
+                if (a.getNombreAmbito().startsWith("Clase_")) return false;
+            }
+            a = a.getPadre();
+        }
+        return false;
+    }
+
+    public boolean esAccesible(Visibilidad visibilidad, String claseDeclarante) {
+        return esAccesible(visibilidad, claseDeclarante, getClaseActual());
+    }
+
+    public boolean esAccesible(Visibilidad visibilidad, String claseDeclarante, String claseActual) {
+        if (visibilidad == null || visibilidad == Visibilidad.PUBLIC) {
+            return true;
+        }
+        if (claseDeclarante == null) {
+            return true;
+        }
+        if (claseActual != null && claseActual.equals(claseDeclarante)) {
+            return true;
+        }
+        if (visibilidad == Visibilidad.PRIVATE || visibilidad == Visibilidad.DEFAULT) {
+            return false;
+        }
+        if (visibilidad == Visibilidad.PROTECTED) {
+            if (claseActual == null) {
+                return false;
+            }
+            Tipo tipoActual = buscarTipoCompuesto(claseActual);
+            if (tipoActual != null && tipoActual.esSubclaseDe(claseDeclarante)) {
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+
+    public boolean tieneCicloHerencia(String nombreClase) {
+        if (nombreClase == null) return false;
+        Set<String> visitados = new HashSet<>();
+        String actual = nombreClase;
+        while (actual != null) {
+            if (!visitados.add(actual)) {
+                return true;
+            }
+            Tipo t = buscarTipoCompuesto(actual);
+            if (t == null) break;
+            actual = t.getClasePadre();
+        }
+        return false;
     }
 
     public void setContextoOrigen(String lenguaje, String archivo) {
@@ -56,6 +150,10 @@ public class TablaSimbolos {
 
     public boolean existeTipoCompuesto(String nombre) {
         return catalogoTiposCompuestos.containsKey(nombre);
+    }
+
+    public Map<String, Tipo> getCatalogoTiposCompuestos() {
+        return Collections.unmodifiableMap(catalogoTiposCompuestos);
     }
 
     public Simbolo registrarEstructura(String nombre, Tipo tipoEstructura, int linea, int columna) {

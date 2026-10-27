@@ -9,20 +9,24 @@ public class ComprobadorTipos {
         if (destino == null || origen == null) return false;
         if (destino.getBase() == TipoBase.ERROR || origen.getBase() == TipoBase.ERROR) return false;
 
-        if (origen.getBase() == TipoBase.VOID) {
+        if (origen.getBase() == TipoBase.VOID) return false;
+        if (origen.getBase() == TipoBase.NULO) {
             return destino.getBase() == TipoBase.OBJETO_CLASE ||
                 destino.getBase() == TipoBase.ESTRUCTURA ||
-                destino.getBase() == TipoBase.ARREGLO ||
-                destino.getBase().esNumerico();
+                destino.getBase() == TipoBase.ARREGLO;
+
         }
 
-        if (destino.getBase() == TipoBase.VOID) return false;
+        if (destino.getBase() == TipoBase.VOID || destino.getBase() == TipoBase.NULO) return false;
 
         if (destino.esMismoTipo(origen)) return true;
 
         if ((destino.getBase() == TipoBase.ESTRUCTURA || destino.getBase() == TipoBase.OBJETO_CLASE)
                 && (origen.getBase() == TipoBase.ESTRUCTURA || origen.getBase() == TipoBase.OBJETO_CLASE)) {
             if (destino.getNombreTipo() != null && destino.getNombreTipo().equals(origen.getNombreTipo())) {
+                return true;
+            }
+            if (origen.esSubclaseDe(destino)) {
                 return true;
             }
         }
@@ -38,6 +42,7 @@ public class ComprobadorTipos {
         if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.ERROR || t2.getBase() == TipoBase.ERROR) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.VOID || t2.getBase() == TipoBase.VOID) return Tipo.ERROR;
+        if (t1.getBase() == TipoBase.NULO || t2.getBase() == TipoBase.NULO) return Tipo.ERROR;
 
         if (t1.getBase() == TipoBase.CADENA || t2.getBase() == TipoBase.CADENA) {
             return Tipo.CADENA;
@@ -57,6 +62,7 @@ public class ComprobadorTipos {
         if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.ERROR || t2.getBase() == TipoBase.ERROR) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.VOID || t2.getBase() == TipoBase.VOID) return Tipo.ERROR;
+        if (t1.getBase() == TipoBase.NULO || t2.getBase() == TipoBase.NULO) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.CADENA || t2.getBase() == TipoBase.CADENA) return Tipo.ERROR;
 
         if (t1.getBase().esNumerico() && t2.getBase().esNumerico()) {
@@ -83,15 +89,22 @@ public class ComprobadorTipos {
         if (t1 == null || t2 == null) return Tipo.ERROR;
         if (t1.getBase() == TipoBase.ERROR || t2.getBase() == TipoBase.ERROR) return Tipo.ERROR;
 
-        if (t1.getBase() == TipoBase.VOID) {
-            return esTipoReferencia(t2) ? Tipo.BOOLEANO : Tipo.ERROR;
+        if (t1.getBase() == TipoBase.VOID || t1.getBase() == TipoBase.NULO) {
+            return (esTipoReferencia(t2) || t2.getBase() == TipoBase.NULO || t2.getBase() == TipoBase.VOID) ? Tipo.BOOLEANO : Tipo.ERROR;
         }
-        if (t2.getBase() == TipoBase.VOID) {
-            return esTipoReferencia(t1) ? Tipo.BOOLEANO : Tipo.ERROR;
+        if (t2.getBase() == TipoBase.VOID || t2.getBase() == TipoBase.NULO) {
+            return (esTipoReferencia(t1) || t1.getBase() == TipoBase.NULO || t1.getBase() == TipoBase.VOID) ? Tipo.BOOLEANO : Tipo.ERROR;
         }
 
         if (t1.esMismoTipo(t2)) return Tipo.BOOLEANO;
         if (t1.getBase().esNumerico() && t2.getBase().esNumerico()) return Tipo.BOOLEANO;
+
+        if ((t1.getBase() == TipoBase.OBJETO_CLASE || t1.getBase() == TipoBase.ESTRUCTURA)
+                && (t2.getBase() == TipoBase.OBJETO_CLASE || t2.getBase() == TipoBase.ESTRUCTURA)) {
+            if (t1.esSubclaseDe(t2) || t2.esSubclaseDe(t1)) {
+                return Tipo.BOOLEANO;
+            }
+        }
 
         return Tipo.ERROR;
     }
@@ -120,8 +133,14 @@ public class ComprobadorTipos {
             return (tTrue.getBase().getJerarquia() >= tFalse.getBase().getJerarquia()) ? tTrue : tFalse;
         }
 
-        if (tTrue.getBase() == TipoBase.VOID && esTipoReferencia(tFalse)) return tFalse;
-        if (tFalse.getBase() == TipoBase.VOID && esTipoReferencia(tTrue)) return tTrue;
+        if ((tTrue.getBase() == TipoBase.VOID || tTrue.getBase() == TipoBase.NULO) && esTipoReferencia(tFalse)) return tFalse;
+        if ((tFalse.getBase() == TipoBase.VOID || tFalse.getBase() == TipoBase.NULO) && esTipoReferencia(tTrue)) return tTrue;
+
+        if ((tTrue.getBase() == TipoBase.OBJETO_CLASE || tTrue.getBase() == TipoBase.ESTRUCTURA)
+                && (tFalse.getBase() == TipoBase.OBJETO_CLASE || tFalse.getBase() == TipoBase.ESTRUCTURA)) {
+            if (tTrue.esSubclaseDe(tFalse)) return tFalse;
+            if (tFalse.esSubclaseDe(tTrue)) return tTrue;
+        }
 
         return Tipo.ERROR;
     }

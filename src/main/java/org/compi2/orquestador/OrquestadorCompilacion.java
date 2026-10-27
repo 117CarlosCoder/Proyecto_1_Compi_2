@@ -18,11 +18,13 @@ import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.analisis_semantico.YSangriaToken;
 import org.compi2.ast.ModuloSemantico;
 import org.compi2.ast.NodoAST;
+import org.compi2.ast.sentencias.NodoClase;
 import org.compi2.ast.sentencias.NodoFuncion;
 import org.compi2.ast.sentencias.NodoPrograma;
 import org.compi2.ast.sentencias.NodoProgramaY;
 import org.compi2.ast.sentencias.NodoUnidadCompilacionZ;
 import org.compi2.c3d.GeneradorC3D;
+import org.compi2.riscv.GeneradorRiscV;
 import org.compi2.constructores_ast.ConstructorAstPigLatin;
 import org.compi2.constructores_ast.ConstructorAstY;
 import org.compi2.constructores_ast.ConstructorAstZetariano;
@@ -36,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -104,6 +107,7 @@ public class OrquestadorCompilacion {
         List<ErrorSemantico> erroresSemanticos = new ArrayList<>();
 
         procesarFase(archivos, tabla, erroresSemanticos, true);
+        enlazarHerencia(archivos, tabla, erroresSemanticos);
         procesarFase(archivos, tabla, erroresSemanticos, false);
 
         ejecutarConContexto(tabla, erroresSemanticos, "Pig Latin", nombrePig,
@@ -135,6 +139,9 @@ public class OrquestadorCompilacion {
         List<ErrorSemantico> erroresSemanticos = new ArrayList<>();
         if (modulo.getAst() instanceof ModuloSemantico moduloSemantico) {
             moduloSemantico.registrarEnTablaSimbolos(tabla, erroresSemanticos);
+            if (modulo.getAst() instanceof NodoUnidadCompilacionZ uZ) {
+                uZ.enlazarHerencia(tabla, erroresSemanticos);
+            }
             moduloSemantico.comprobarCuerpos(tabla, erroresSemanticos);
         }
         etiquetarErroresConArchivo(erroresSemanticos, 0, nombreArchivo);
@@ -295,6 +302,27 @@ public class OrquestadorCompilacion {
         procesarFaseLenguaje(archivos, tabla, errores, TipoLenguaje.ZETARIANO, "Zetariano", esFaseRegistro);
     }
 
+    private void enlazarHerencia(Map<String, ArchivoFuente> archivos, TablaSimbolos tabla,
+                                 List<ErrorSemantico> errores) {
+        Map<String, NodoClase> mapaClases = new HashMap<>();
+        for (ArchivoFuente af : archivos.values()) {
+            if (af.esZetariano() && af.getAst() instanceof NodoUnidadCompilacionZ uZ) {
+                if (uZ.getClases() != null) {
+                    for (NodoClase c : uZ.getClases()) {
+                        mapaClases.put(c.getNombre(), c);
+                    }
+                }
+            }
+        }
+
+        for (ArchivoFuente af : archivos.values()) {
+            if (af.esZetariano() && af.getAst() instanceof NodoUnidadCompilacionZ uZ) {
+                ejecutarConContexto(tabla, errores, "Zetariano", af.getNombreArchivo(),
+                    () -> uZ.enlazarHerencia(tabla, errores, mapaClases));
+            }
+        }
+    }
+
     private void procesarFaseLenguaje(Map<String, ArchivoFuente> archivos, TablaSimbolos tabla,
                                       List<ErrorSemantico> errores, TipoLenguaje lenguaje,
                                       String contexto, boolean esFaseRegistro) {
@@ -339,6 +367,8 @@ public class OrquestadorCompilacion {
         String codigoC3D = genC3D.compilarConFunciones(funciones, instrucciones);
         resultado.setCodigoC3D(codigoC3D);
         resultado.setContenedorC3D(genC3D.getC3d());
+        String codigoRiscV = GeneradorRiscV.generarCodigo(genC3D.getC3d());
+        resultado.setCodigoRiscV(codigoRiscV);
     }
 
     private List<NodoAST> recopilarInstruccionesPrincipales(NodoPrograma astPrincipal) {
