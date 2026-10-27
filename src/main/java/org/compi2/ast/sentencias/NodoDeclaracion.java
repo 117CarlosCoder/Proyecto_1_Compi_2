@@ -1,6 +1,7 @@
 package org.compi2.ast.sentencias;
 
 import lombok.Getter;
+import lombok.Setter;
 import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.Simbolo;
@@ -8,6 +9,7 @@ import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
+import org.compi2.tipos.Visibilidad;
 
 import org.compi2.ast.expresiones.NodoExpresionLectura;
 import org.compi2.ast.expresiones.NodoListaValores;
@@ -20,18 +22,26 @@ public class NodoDeclaracion implements NodoAST {
     private final Tipo tipoDeclarado;
     private final NodoAST valorInicial;
     private final List<NodoAST> dimensionesDeclaradas;
+    @Setter
+    private Visibilidad visibilidad;
     private final int linea;
     private final int columna;
 
     public NodoDeclaracion(String nombre, Tipo tipoDeclarado, NodoAST valorInicial, int linea, int columna) {
-        this(nombre, tipoDeclarado, valorInicial, Collections.emptyList(), linea, columna);
+        this(nombre, tipoDeclarado, valorInicial, Collections.emptyList(), Visibilidad.DEFAULT, linea, columna);
     }
 
     public NodoDeclaracion(String nombre, Tipo tipoDeclarado, NodoAST valorInicial, List<NodoAST> dimensionesDeclaradas, int linea, int columna) {
+        this(nombre, tipoDeclarado, valorInicial, dimensionesDeclaradas, Visibilidad.DEFAULT, linea, columna);
+    }
+
+    public NodoDeclaracion(String nombre, Tipo tipoDeclarado, NodoAST valorInicial, List<NodoAST> dimensionesDeclaradas,
+                           Visibilidad visibilidad, int linea, int columna) {
         this.nombre = nombre;
         this.tipoDeclarado = tipoDeclarado;
         this.valorInicial = valorInicial;
         this.dimensionesDeclaradas = dimensionesDeclaradas != null ? dimensionesDeclaradas : Collections.emptyList();
+        this.visibilidad = visibilidad != null ? visibilidad : Visibilidad.DEFAULT;
         this.linea = linea;
         this.columna = columna;
     }
@@ -47,6 +57,13 @@ public class NodoDeclaracion implements NodoAST {
             if (definido == null) {
                 errores.add(new ErrorSemantico(
                         "El tipo '" + tipoDeclarado.getNombreTipo() + "' no está definido ni importado.",
+                        ambito, linea, columna));
+                return Tipo.ERROR;
+            }
+            if (tipoDeclarado.getBase() == TipoBase.OBJETO_CLASE && !tablaSimbolos.esAccesible(definido.getVisibilidad(), definido.getNombreTipo())) {
+                errores.add(new ErrorSemantico(
+                        String.format("La clase '%s' no es accesible (visibilidad %s).",
+                                definido.getNombreTipo(), definido.getVisibilidad()),
                         ambito, linea, columna));
                 return Tipo.ERROR;
             }

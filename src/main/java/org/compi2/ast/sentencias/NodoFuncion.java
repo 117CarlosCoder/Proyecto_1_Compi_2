@@ -1,20 +1,18 @@
 package org.compi2.ast.sentencias;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.Simbolo;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
-import org.compi2.tipos.TipoBase;
+import org.compi2.tipos.Visibilidad;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoFuncion implements NodoAST {
     private final String nombre;
     private final List<Parametro> parametros;
@@ -23,12 +21,33 @@ public class NodoFuncion implements NodoAST {
     private final int linea;
     private final int columna;
 
+    public NodoFuncion(String nombre, List<Parametro> parametros, Tipo tipoRetorno, List<NodoAST> cuerpo, int linea, int columna) {
+        this.nombre = nombre;
+        this.parametros = parametros;
+        this.tipoRetorno = tipoRetorno;
+        this.cuerpo = cuerpo;
+        this.linea = linea;
+        this.columna = columna;
+    }
+
     private boolean registradoEnTabla = false;
     private Tipo tipoFuncionCache;
     @Setter
     private boolean esMetodo = false;
     @Setter
     private String claseContenedora;
+    @Setter
+    private Visibilidad visibilidad = Visibilidad.PUBLIC;
+    @Setter
+    private boolean tieneOverride = false;
+
+    public NodoFuncion(String nombre, Visibilidad visibilidad, boolean tieneOverride,
+                       List<Parametro> parametros, Tipo tipoRetorno, List<NodoAST> cuerpo,
+                       int linea, int columna) {
+        this(nombre, parametros, tipoRetorno, cuerpo, linea, columna);
+        this.visibilidad = visibilidad != null ? visibilidad : Visibilidad.PUBLIC;
+        this.tieneOverride = tieneOverride;
+    }
 
     public Tipo registrarEnTablaSimbolos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         if (registradoEnTabla && tipoFuncionCache != null && tablaSimbolos.buscarFuncionGlobal(nombre) != null) {
@@ -56,14 +75,12 @@ public class NodoFuncion implements NodoAST {
     }
 
     public void comprobarCuerpo(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
-        tablaSimbolos.abrirAmbitoFuncion("Funcion_" + nombre, tipoRetorno != null ? tipoRetorno : Tipo.VOID);
+        Tipo retResuelto = (tipoRetorno != null) ? tablaSimbolos.resolverTipo(tipoRetorno) : Tipo.VOID;
+        tablaSimbolos.abrirAmbitoFuncion("Funcion_" + nombre, retResuelto);
         try {
             if (parametros != null) {
                 for (Parametro p : parametros) {
-                    Tipo tipoParam = p.getTipo();
-                    if (tipoParam != null && (tipoParam.getBase() == TipoBase.ESTRUCTURA || tipoParam.getBase() == TipoBase.OBJETO_CLASE)) {
-                        tipoParam = tablaSimbolos.resolverTipo(tipoParam);
-                    }
+                    Tipo tipoParam = tablaSimbolos.resolverTipo(p.getTipo());
                     Simbolo sp = tablaSimbolos.registrarSimbolo(p.getNombre(), tipoParam, "parametro", p.getLinea(), p.getColumna());
                     if (sp == null) {
                         errores.add(new ErrorSemantico(

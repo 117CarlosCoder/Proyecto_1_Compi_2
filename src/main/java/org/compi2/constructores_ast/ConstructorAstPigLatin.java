@@ -65,7 +65,9 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     public NodoAST visitDeclaracionObjeto(piglatinParser.DeclaracionObjetoContext ctx) {
         String varId = ctx.ID(0).getText();
         String claseId = ctx.ID(1).getText();
-        Tipo tipo = new Tipo(TipoBase.OBJETO_CLASE, claseId);
+        Tipo tipo = (ctx.tipoDeclarable() != null)
+            ? obtenerTipo(ctx.tipoDeclarable())
+            : new Tipo(TipoBase.OBJETO_CLASE, claseId);
 
         List<NodoAST> args = new ArrayList<>();
         if (ctx.argumentos() != null) {
@@ -77,6 +79,16 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
             claseId, args, ctx.NOVUS().getSymbol().getLine(), ctx.NOVUS().getSymbol().getCharPositionInLine()
         );
         return new NodoDeclaracion(varId, tipo, init, ctx.ID(0).getSymbol().getLine(), ctx.ID(0).getSymbol().getCharPositionInLine());
+    }
+
+    @Override
+    public NodoAST visitDeclaracionObjetoNulo(piglatinParser.DeclaracionObjetoNuloContext ctx) {
+        String varId = ctx.ID().getText();
+        Tipo tipo = obtenerTipo(ctx.tipoDeclarable());
+        NodoAST init = new NodoLiteral(
+            null, Tipo.NULO, ctx.NULO().getSymbol().getLine(), ctx.NULO().getSymbol().getCharPositionInLine()
+        );
+        return new NodoDeclaracion(varId, tipo, init, ctx.ID().getSymbol().getLine(), ctx.ID().getSymbol().getCharPositionInLine());
     }
 
     @Override
@@ -420,5 +432,10 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
     public NodoAST visitLiteralBooleano(piglatinParser.LiteralBooleanoContext ctx) {
         boolean val = ctx.getText().equals("verum");
         return new NodoLiteral(val, ctx.getStart().getLine(), ctx.getStart().getCharPositionInLine());
+    }
+
+    @Override
+    public NodoAST visitLitNulo(piglatinParser.LitNuloContext ctx) {
+        return new NodoLiteral(null, Tipo.NULO, ctx.NULO().getSymbol().getLine(), ctx.NULO().getSymbol().getCharPositionInLine());
     }
 }

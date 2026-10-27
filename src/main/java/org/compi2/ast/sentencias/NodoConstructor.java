@@ -1,23 +1,38 @@
 package org.compi2.ast.sentencias;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.Simbolo;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
+import org.compi2.tipos.Visibilidad;
 
 import java.util.List;
 
 @Getter
-@AllArgsConstructor
 public class NodoConstructor implements NodoAST {
     private final String nombreClase;
+    @Setter
+    private Visibilidad visibilidad;
     private final List<Parametro> parametros;
     private final List<NodoAST> cuerpo;
     private final int linea;
     private final int columna;
+
+    public NodoConstructor(String nombreClase, Visibilidad visibilidad, List<Parametro> parametros, List<NodoAST> cuerpo, int linea, int columna) {
+        this.nombreClase = nombreClase;
+        this.visibilidad = visibilidad;
+        this.parametros = parametros;
+        this.cuerpo = cuerpo;
+        this.linea = linea;
+        this.columna = columna;
+    }
+
+    public NodoConstructor(String nombreClase, List<Parametro> parametros, List<NodoAST> cuerpo, int linea, int columna) {
+        this(nombreClase, Visibilidad.PUBLIC, parametros, cuerpo, linea, columna);
+    }
 
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
@@ -25,7 +40,8 @@ public class NodoConstructor implements NodoAST {
         try {
             if (parametros != null) {
                 for (Parametro p : parametros) {
-                    Simbolo sp = tablaSimbolos.registrarSimbolo(p.getNombre(), p.getTipo(), "parametro", p.getLinea(), p.getColumna());
+                    Tipo tipoParam = tablaSimbolos.resolverTipo(p.getTipo());
+                    Simbolo sp = tablaSimbolos.registrarSimbolo(p.getNombre(), tipoParam, "parametro", p.getLinea(), p.getColumna());
                     if (sp == null) {
                         errores.add(new ErrorSemantico(
                             "Parámetro duplicado '" + p.getNombre() + "' en constructor de '" + nombreClase + "'.",

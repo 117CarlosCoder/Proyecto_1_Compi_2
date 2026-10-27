@@ -34,6 +34,18 @@ public class NodoUnidadCompilacionZ implements ModuloSemantico {
         }
     }
 
+    public void enlazarHerencia(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
+        enlazarHerencia(tablaSimbolos, errores, null);
+    }
+
+    public void enlazarHerencia(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores, java.util.Map<String, NodoClase> mapaClases) {
+        for (NodoClase c : clases) {
+            if (c != null) {
+                c.enlazarHerencia(tablaSimbolos, errores, mapaClases);
+            }
+        }
+    }
+
     @Override
     public void comprobarCuerpos(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         for (NodoClase c : clases) {
@@ -46,6 +58,7 @@ public class NodoUnidadCompilacionZ implements ModuloSemantico {
     @Override
     public Tipo comprobar(TablaSimbolos tablaSimbolos, List<ErrorSemantico> errores) {
         registrarEnTablaSimbolos(tablaSimbolos, errores);
+        enlazarHerencia(tablaSimbolos, errores);
         comprobarCuerpos(tablaSimbolos, errores);
         return Tipo.VOID;
     }

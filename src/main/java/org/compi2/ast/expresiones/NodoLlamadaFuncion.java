@@ -1,7 +1,6 @@
 package org.compi2.ast.expresiones;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.Simbolo;
@@ -9,18 +8,25 @@ import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
+import org.compi2.tipos.Visibilidad;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoLlamadaFuncion implements NodoAST {
     private final String nombreFuncion;
     private final List<NodoAST> argumentos;
     private final int linea;
     private final int columna;
+
+    public NodoLlamadaFuncion(String nombreFuncion, List<NodoAST> argumentos, int linea, int columna) {
+        this.nombreFuncion = nombreFuncion;
+        this.argumentos = argumentos;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     private boolean esMetodoDeClaseActual;
     private String claseObjetivoResuelta;
@@ -58,22 +64,51 @@ public class NodoLlamadaFuncion implements NodoAST {
         }
 
         Tipo tipoFuncion;
-        if (simboloFuncion != null) {
+        if (esMetodoThis) {
+            tipoFuncion = tClase.buscarMetodo(nombreFuncion, tiposArgs);
+            if (tipoFuncion == null) {
+                Tipo candAncestros = tClase.buscarMetodoAncestrosCualquiera(nombreFuncion, tiposArgs);
+                if (candAncestros != null) {
+                    Visibilidad vis = candAncestros.getVisibilidad();
+                    String claseDecl = candAncestros.getClaseDeclarante() != null ? candAncestros.getClaseDeclarante() : tClase.getNombreTipo();
+                    if (!tablaSimbolos.esAccesible(vis, claseDecl)) {
+                        errores.add(new ErrorSemantico(
+                            String.format("El método '%s' de la clase '%s' no es accesible (visibilidad %s).",
+                                nombreFuncion, claseDecl, vis),
+                            ambito, linea, columna));
+                        return Tipo.ERROR;
+                    }
+                }
+                if (simboloFuncion != null) {
+                    tipoFuncion = simboloFuncion.getTipo();
+                    this.esMetodoDeClaseActual = false;
+                    this.claseObjetivoResuelta = null;
+                    this.funcionResuelta = tipoFuncion;
+                } else {
+                    errores.add(new ErrorSemantico(
+                        String.format("No existe una sobrecarga del método '%s' en la clase '%s' que coincida con los argumentos: %s.",
+                            nombreFuncion, tClase.getNombreTipo(), tiposArgs),
+                        ambito, linea, columna));
+                    return Tipo.ERROR;
+                }
+            } else {
+                Visibilidad vis = tipoFuncion.getVisibilidad();
+                String claseDeclarante = tipoFuncion.getClaseDeclarante() != null ? tipoFuncion.getClaseDeclarante() : tClase.getNombreTipo();
+                if (!tablaSimbolos.esAccesible(vis, claseDeclarante)) {
+                    errores.add(new ErrorSemantico(
+                        String.format("El método '%s' de la clase '%s' no es accesible (visibilidad %s).",
+                            nombreFuncion, claseDeclarante, vis),
+                        ambito, linea, columna));
+                    return Tipo.ERROR;
+                }
+                this.esMetodoDeClaseActual = true;
+                this.claseObjetivoResuelta = tClase.getNombreTipo();
+                this.funcionResuelta = tipoFuncion;
+            }
+        } else {
             tipoFuncion = simboloFuncion.getTipo();
             this.esMetodoDeClaseActual = false;
             this.claseObjetivoResuelta = null;
-            this.funcionResuelta = tipoFuncion;
-        } else {
-            tipoFuncion = tClase.buscarMetodo(nombreFuncion, tiposArgs);
-            if (tipoFuncion == null) {
-                errores.add(new ErrorSemantico(
-                    String.format("No existe una sobrecarga del método '%s' en la clase '%s' que coincida con los argumentos: %s.",
-                        nombreFuncion, tClase.getNombreTipo(), tiposArgs),
-                    ambito, linea, columna));
-                return Tipo.ERROR;
-            }
-            this.esMetodoDeClaseActual = true;
-            this.claseObjetivoResuelta = tClase.getNombreTipo();
             this.funcionResuelta = tipoFuncion;
         }
 

@@ -1,24 +1,31 @@
 package org.compi2.ast.expresiones;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
+import org.compi2.tipos.Visibilidad;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
 public class NodoLlamadaMetodo implements NodoAST {
     private final NodoAST estructura;
     private final String nombreMetodo;
     private final List<NodoAST> argumentos;
     private final int linea;
     private final int columna;
+
+    public NodoLlamadaMetodo(NodoAST estructura, String nombreMetodo, List<NodoAST> argumentos, int linea, int columna) {
+        this.estructura = estructura;
+        this.nombreMetodo = nombreMetodo;
+        this.argumentos = argumentos;
+        this.linea = linea;
+        this.columna = columna;
+    }
 
     private String claseObjetivoResuelta;
     private Tipo metodoResuelto;
@@ -61,10 +68,33 @@ public class NodoLlamadaMetodo implements NodoAST {
 
         Tipo metodo = tipoEfectivo.buscarMetodo(nombreMetodo, tiposArgs);
         if (metodo == null) {
+            Tipo candAncestros = tipoEfectivo.buscarMetodoAncestrosCualquiera(nombreMetodo, tiposArgs);
+            if (candAncestros != null) {
+                Visibilidad vis = candAncestros.getVisibilidad();
+                String claseDecl = candAncestros.getClaseDeclarante() != null ? candAncestros.getClaseDeclarante() : tipoEfectivo.getNombreTipo();
+                if (!tablaSimbolos.esAccesible(vis, claseDecl)) {
+                    errores.add(new ErrorSemantico(
+                        String.format("El método '%s' de la clase '%s' no es accesible (visibilidad %s).",
+                            nombreMetodo, claseDecl, vis),
+                        ambito, linea, columna));
+                    return Tipo.ERROR;
+                }
+            }
+
             errores.add(new ErrorSemantico(
                     String.format(
                             "No existe una sobrecarga del método '%s' en la clase '%s' que coincida con los argumentos: %s.",
                             nombreMetodo, tipoEstructura.getNombreTipo(), tiposArgs),
+                    ambito, linea, columna));
+            return Tipo.ERROR;
+        }
+
+        Visibilidad vis = metodo.getVisibilidad();
+        String claseDeclarante = metodo.getClaseDeclarante() != null ? metodo.getClaseDeclarante() : tipoEfectivo.getNombreTipo();
+        if (!tablaSimbolos.esAccesible(vis, claseDeclarante)) {
+            errores.add(new ErrorSemantico(
+                    String.format("El método '%s' de la clase '%s' no es accesible (visibilidad %s).",
+                            nombreMetodo, claseDeclarante, vis),
                     ambito, linea, columna));
             return Tipo.ERROR;
         }

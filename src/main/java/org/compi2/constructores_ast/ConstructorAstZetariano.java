@@ -7,6 +7,7 @@ import org.compi2.ast.expresiones.*;
 import org.compi2.ast.sentencias.*;
 import org.compi2.tipos.Tipo;
 import org.compi2.tipos.TipoBase;
+import org.compi2.tipos.Visibilidad;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,10 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
 
     @Override
     public NodoAST visitDefinicionClase(zetarianoParser.DefinicionClaseContext ctx) {
-        String nombreClase = ctx.ID().getText();
+        String nombreClase = ctx.ID(0).getText();
+        String clasePadre = (ctx.EXTIENDE() != null && ctx.ID().size() > 1) ? ctx.ID(1).getText() : null;
+        Visibilidad visClase = obtenerVisibilidad(ctx.modificador(), Visibilidad.PUBLIC);
+
         List<NodoDeclaracion> campos = new ArrayList<>();
         List<NodoConstructor> constructores = new ArrayList<>();
         List<NodoFuncion> metodos = new ArrayList<>();
@@ -54,6 +58,8 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
 
         return new NodoClase(
                 nombreClase,
+                clasePadre,
+                visClase,
                 campos,
                 constructores,
                 metodos,
@@ -66,27 +72,40 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
         String id = ctx.ID().getText();
         Tipo t = obtenerTipo(ctx.tipo());
         NodoAST init = ctx.inicializador() != null ? visit(ctx.inicializador()) : null;
-        return new NodoDeclaracion(id, t, init, ctx.ID().getSymbol().getLine(),
+        Visibilidad vis = obtenerVisibilidad(ctx.modificador(), Visibilidad.DEFAULT);
+        NodoDeclaracion decl = new NodoDeclaracion(id, t, init, ctx.ID().getSymbol().getLine(),
                 ctx.ID().getSymbol().getCharPositionInLine());
+        decl.setVisibilidad(vis);
+        return decl;
     }
 
     @Override
     public NodoAST visitConstructor(zetarianoParser.ConstructorContext ctx) {
         String nombre = ctx.ID().getText();
+        Visibilidad vis = obtenerVisibilidad(ctx.modificador(), Visibilidad.DEFAULT);
         List<Parametro> params = obtenerParametros(ctx.parametrosFormales());
         List<NodoAST> cuerpo = obtenerInstruccionesBloque(ctx.bloque());
-        return new NodoConstructor(nombre, params, cuerpo, ctx.ID().getSymbol().getLine(),
+        return new NodoConstructor(nombre, vis, params, cuerpo, ctx.ID().getSymbol().getLine(),
                 ctx.ID().getSymbol().getCharPositionInLine());
     }
 
     @Override
     public NodoAST visitMetodo(zetarianoParser.MetodoContext ctx) {
         String nombre = ctx.ID().getText();
+        Visibilidad vis = obtenerVisibilidad(ctx.modificador(), Visibilidad.DEFAULT);
+        boolean tieneOverride = ctx.ARROBA_OVERRIDE() != null && !ctx.ARROBA_OVERRIDE().isEmpty();
         Tipo retTipo = obtenerTipoRetorno(ctx.tipoRetorno());
         List<Parametro> params = obtenerParametros(ctx.parametrosFormales());
         List<NodoAST> cuerpo = obtenerInstruccionesBloque(ctx.bloque());
-        return new NodoFuncion(nombre, params, retTipo, cuerpo, ctx.ID().getSymbol().getLine(),
+        return new NodoFuncion(nombre, vis, tieneOverride, params, retTipo, cuerpo, ctx.ID().getSymbol().getLine(),
                 ctx.ID().getSymbol().getCharPositionInLine());
+    }
+
+    private Visibilidad obtenerVisibilidad(zetarianoParser.ModificadorContext ctx, Visibilidad porDefecto) {
+        if (ctx == null) {
+            return porDefecto;
+        }
+        return Visibilidad.desdeTexto(ctx.getText());
     }
 
     private Tipo obtenerTipo(zetarianoParser.TipoContext ctx) {
@@ -465,9 +484,29 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
 
     @Override
     public NodoAST visitEncadenado(zetarianoParser.EncadenadoContext ctx) {
-        String baseId = ctx.ID().getText();
-        NodoAST actual = new NodoIdentificador(baseId, ctx.ID().getSymbol().getLine(),
-                ctx.ID().getSymbol().getCharPositionInLine());
+        if (ctx.SUPER() != null && ctx.sufijo().size() == 1
+                && ctx.sufijo(0) instanceof zetarianoParser.SufijoLlamadaContext callCtx) {
+            List<NodoAST> args = new ArrayList<>();
+            if (callCtx.argumentos() != null) {
+                for (zetarianoParser.ExpresionContext expCtx : callCtx.argumentos().expresion()) {
+                    args.add(visit(expCtx));
+                }
+            }
+            return new NodoLlamadaSuper(
+                    args,
+                    ctx.SUPER().getSymbol().getLine(),
+                    ctx.SUPER().getSymbol().getCharPositionInLine());
+        }
+
+        NodoAST actual;
+        if (ctx.SUPER() != null) {
+            actual = new NodoIdentificador("super", ctx.SUPER().getSymbol().getLine(),
+                    ctx.SUPER().getSymbol().getCharPositionInLine());
+        } else {
+            String baseId = ctx.ID().getText();
+            actual = new NodoIdentificador(baseId, ctx.ID().getSymbol().getLine(),
+                    ctx.ID().getSymbol().getCharPositionInLine());
+        }
 
         for (zetarianoParser.SufijoContext suf : ctx.sufijo()) {
             if (suf instanceof zetarianoParser.SufijoIndiceContext indCtx) {
@@ -538,7 +577,7 @@ public class ConstructorAstZetariano extends zetarianoBaseVisitor<NodoAST> {
 
     @Override
     public NodoAST visitLitNulo(zetarianoParser.LitNuloContext ctx) {
-        return new NodoLiteral(null, Tipo.VOID, ctx.NULO().getSymbol().getLine(),
+        return new NodoLiteral(null, Tipo.NULO, ctx.NULO().getSymbol().getLine(),
                 ctx.NULO().getSymbol().getCharPositionInLine());
     }
 }
