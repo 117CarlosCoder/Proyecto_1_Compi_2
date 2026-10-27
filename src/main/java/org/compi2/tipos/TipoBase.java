@@ -1,6 +1,5 @@
 package org.compi2.tipos;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter

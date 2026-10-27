@@ -1,7 +1,6 @@
 package org.compi2.ast.expresiones;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;

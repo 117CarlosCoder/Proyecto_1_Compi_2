@@ -1,7 +1,6 @@
 package org.compi2.errores;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 @Getter
 public enum TipoError {

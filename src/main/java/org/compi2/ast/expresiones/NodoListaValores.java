@@ -1,6 +1,5 @@
 package org.compi2.ast.expresiones;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;

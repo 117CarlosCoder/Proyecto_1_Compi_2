@@ -2,7 +2,6 @@ package org.compi2.ast.sentencias;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.compi2.analisis_semantico.ComprobadorTipos;
 import org.compi2.analisis_semantico.ErrorSemantico;
 import org.compi2.analisis_semantico.TablaSimbolos;
 import org.compi2.ast.NodoAST;
@@ -132,7 +131,6 @@ public class NodoClase implements NodoAST {
 
         enlazandoHerencia = true;
         try {
-            // Enlazar primero el padre recursivamente (de ancestro a descendiente)
             if (mapaClases != null && mapaClases.containsKey(clasePadre)) {
                 mapaClases.get(clasePadre).enlazarHerencia(tablaSimbolos, errores, mapaClases);
             }
@@ -277,7 +275,6 @@ public class NodoClase implements NodoAST {
                 }
             }
 
-            // Validar super(...) y constructores
             if (clasePadre != null && tipoPadre != null) {
                 boolean padreTieneCtorVacio = tieneConstructorVacioAccesible(tipoPadre, tablaSimbolos);
 
