@@ -26,9 +26,10 @@ instruccion:
 	| incrementoDecremento PUNTO_Y_COMA	# InstIncrementoDecremento;
 
 declaracionVariable:
-	ESTO ID DOS_PUNTOS tipoDeclarable valorInicial? PUNTO_Y_COMA			# DeclaracionTipada
-	| ESTO ID DOS_PUNTOS NOVUS ID PAR_IZQ argumentos? PAR_DER PUNTO_Y_COMA	# DeclaracionObjeto
-	| ESTO ID DOS_PUNTOS literalBooleano PUNTO_Y_COMA						# DeclaracionBooleana;
+	ESTO ID DOS_PUNTOS tipoDeclarable valorInicial? PUNTO_Y_COMA										# DeclaracionTipada
+	| ESTO ID DOS_PUNTOS NOVUS ID PAR_IZQ argumentos? PAR_DER (DOS_PUNTOS tipoDeclarable)? PUNTO_Y_COMA	# DeclaracionObjeto
+	| ESTO ID DOS_PUNTOS NULO DOS_PUNTOS tipoDeclarable PUNTO_Y_COMA									# DeclaracionObjetoNulo
+	| ESTO ID DOS_PUNTOS literalBooleano PUNTO_Y_COMA													# DeclaracionBooleana;
 
 declaracionArreglo:
 	SERIES ID (CORCHETE_IZQ expresion CORCHETE_DER)+ DOS_PUNTOS tipoDeclarable listaValores?
@@ -122,7 +123,8 @@ literal:
 	| LIT_DECIMAL		# LitDecimal
 	| LIT_CADENA		# LitCadena
 	| LIT_CARACTER		# LitCaracter
-	| literalBooleano	# LitBooleano;
+	| literalBooleano	# LitBooleano
+	| NULO				# LitNulo;
 
 literalBooleano: LIT_VERUM | LIT_FALSUS;
 
@@ -134,6 +136,7 @@ IMPORT: 'import';
 ESTO: 'esto';
 SERIES: 'series';
 NOVUS: 'novus';
+NULO: 'null';
 SI: 'si';
 ALITER: 'aliter';
 DUM: 'dum';

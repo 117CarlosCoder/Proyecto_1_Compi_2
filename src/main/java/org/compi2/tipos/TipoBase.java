@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
-@AllArgsConstructor
 public enum TipoBase {
     BOOLEANO(1),
     CARACTER(2),
@@ -16,9 +15,14 @@ public enum TipoBase {
     ARREGLO(0),
     OBJETO_CLASE(0),
     ESTRUCTURA(0),
-    FUNCION(0);
+    FUNCION(0),
+    NULO(0);
 
     private final int jerarquia;
+
+    TipoBase(int jerarquia) {
+        this.jerarquia = jerarquia;
+    }
 
     public boolean esNumerico() {
         return this == ENTERO || this == DECIMAL || this == CARACTER;

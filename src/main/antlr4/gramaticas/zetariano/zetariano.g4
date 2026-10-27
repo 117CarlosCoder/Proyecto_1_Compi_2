@@ -5,11 +5,13 @@ unidadCompilacion
     ;
 
 definicionClase
-    : modificador? CLASE ID LLAVE_IZQ miembro* LLAVE_DER
+    : modificador? CLASE ID (EXTIENDE ID)? LLAVE_IZQ miembro* LLAVE_DER
     ;
 
 modificador
     : PUBLICO
+    | PRIVADO
+    | PROTEGIDO
     ;
 
 miembro
@@ -28,7 +30,7 @@ constructor
     ;
 
 metodo
-    : modificador? tipoRetorno ID PAR_IZQ parametrosFormales? PAR_DER bloque
+    : ARROBA_OVERRIDE? modificador? ARROBA_OVERRIDE? tipoRetorno ID PAR_IZQ parametrosFormales? PAR_DER bloque
     ;
 
 tipoRetorno
@@ -160,7 +162,7 @@ impresion
     ;
 
 encadenado
-    : ID sufijo*
+    : (ID | SUPER) sufijo*
     ;
 
 sufijo
@@ -201,11 +203,16 @@ literal
     | NULO                # LitNulo
     ;
 
-PUBLICO     : 'public';
-CLASE       : 'class';
-VACIO       : 'void';
-NUEVO       : 'new';
-NULO        : 'null';
+PUBLICO         : 'public';
+PRIVADO         : 'private';
+PROTEGIDO       : 'protected';
+EXTIENDE        : 'extends';
+SUPER           : 'super';
+ARROBA_OVERRIDE : '@Override';
+CLASE           : 'class';
+VACIO           : 'void';
+NUEVO           : 'new';
+NULO            : 'null';
 SI          : 'if';
 SINO        : 'else';
 SWITCH      : 'switch';
