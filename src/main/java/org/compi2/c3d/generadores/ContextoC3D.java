@@ -352,17 +352,7 @@ public class ContextoC3D {
     }
 
     public void emitirReadNum(String destino, boolean esDecimal) {
-        int inicio = c3d.getCantidadCuartetas();
-        rutinas.emitirReadNum(destino);
-        if (esDecimal) {
-            c3d.registrarRutinaRiscV(new ContenedorC3D.RangoRutinaRiscV(
-                    ContenedorC3D.TipoRutinaRiscV.READ_DECIMAL,
-                    inicio,
-                    c3d.getCantidadCuartetas(),
-                    null,
-                    destino
-            ));
-        }
+        rutinas.emitirReadNum(destino, esDecimal);
     }
 
     public String emitirReadStr() {

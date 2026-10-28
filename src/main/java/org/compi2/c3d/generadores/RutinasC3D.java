@@ -30,6 +30,10 @@ final class RutinasC3D {
     }
 
     void emitirReadNum(String destino) {
+        emitirReadNum(destino, false);
+    }
+
+    void emitirReadNum(String destino, boolean esDecimal) {
         c3d.emitirAsignacionBuffer("0", "0");
         String tempEstadoLectura = c3d.nuevoTemporal();
         c3d.emitir(new Cuarteta(TipoOperadorC3D.READ_STR, null, null, tempEstadoLectura));
@@ -56,7 +60,7 @@ final class RutinasC3D {
 
         String tempCaracterActual = c3d.nuevoTemporal();
         String etiquetaVerificarPunto = parsearParteEnteraEnBuffer(
-                destino, tempIndice, tempTieneDigitos, tempCaracterActual);
+                destino, tempIndice, tempTieneDigitos, tempCaracterActual, esDecimal);
 
         c3d.emitirEtiqueta(etiquetaVerificarPunto);
         String etiquetaVerificarExponente = c3d.nuevaEtiqueta();
@@ -74,6 +78,9 @@ final class RutinasC3D {
 
         c3d.emitirEtiqueta(etiquetaFallbackCaracter);
         c3d.emitirAsignacion(destino, tempPrimerCaracter);
+        if (esDecimal) {
+            c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG1_X10000);
+        }
         c3d.emitirGoto(etiquetaFin);
 
         c3d.emitirEtiqueta(etiquetaFinDeArchivo);
@@ -102,7 +109,7 @@ final class RutinasC3D {
     }
 
     private String parsearParteEnteraEnBuffer(String destino, String tempIndice, String tempTieneDigitos,
-                                              String tempCaracterActual) {
+                                              String tempCaracterActual, boolean esDecimal) {
         String etiquetaCicloEntero = c3d.nuevaEtiqueta();
         c3d.emitirEtiqueta(etiquetaCicloEntero);
 
@@ -117,6 +124,9 @@ final class RutinasC3D {
         String tempDigito = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.RESTA, tempDigito, tempCaracterActual, "48");
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, destino, destino, tempDigito);
+        if (esDecimal) {
+            c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG2_X10000);
+        }
 
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempIndice, tempIndice, "1");
         c3d.emitirGoto(etiquetaCicloEntero);
@@ -149,6 +159,7 @@ final class RutinasC3D {
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, destino, destino, tempValorFraccionario);
 
         c3d.emitirOperacion(TipoOperadorC3D.MULTIPLICACION, tempFactor, tempFactor, "0.1");
+        c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.MUL_DECIMAL);
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempIndice, tempIndice, "1");
         c3d.emitirGoto(etiquetaCicloFraccionario);
     }
@@ -321,7 +332,6 @@ final class RutinasC3D {
     }
 
     String emitirNumeroAHeap(String num, boolean esDecimal) {
-        int inicio = c3d.size();
         String tempBaseHeap = c3d.nuevoTemporal();
         c3d.emitirAsignacion(tempBaseHeap, "H");
 
@@ -332,24 +342,13 @@ final class RutinasC3D {
         emitirSignoNegativoNumeroAHeap(tempValor);
 
         // 2. Extraer y escribir parte entera
-        emitirParteEnteraNumeroAHeap(tempValor);
+        emitirParteEnteraNumeroAHeap(tempValor, esDecimal);
 
         // 3. Extraer y escribir parte decimal si existe
-        emitirParteDecimalNumeroAHeap(tempValor);
+        emitirParteDecimalNumeroAHeap(tempValor, esDecimal);
 
         // 4. Centinela de fin de cadena (-1)
         cerrarCadenaEnHeap();
-
-        int fin = c3d.size();
-        if (esDecimal) {
-            c3d.registrarRutinaRiscV(new ContenedorC3D.RangoRutinaRiscV(
-                    ContenedorC3D.TipoRutinaRiscV.DECIMAL_TO_HEAP,
-                    inicio,
-                    fin,
-                    num,
-                    tempBaseHeap
-            ));
-        }
 
         return tempBaseHeap;
     }
@@ -363,10 +362,13 @@ final class RutinasC3D {
         c3d.emitirEtiqueta(etiquetaPositivo);
     }
 
-    private void emitirParteEnteraNumeroAHeap(String tempValor) {
+    private void emitirParteEnteraNumeroAHeap(String tempValor, boolean esDecimal) {
         // Extraer parte entera: tempParteEntera = (int)tempValor / 1
         String tempParteEntera = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.DIVISION_ENTERA, tempParteEntera, tempValor, "1");
+        if (esDecimal) {
+            c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.DESESCALAR_ARG1_DIV_10000);
+        }
 
         String etiquetaNoCero = c3d.nuevaEtiqueta();
         String etiquetaFinEntero = c3d.nuevaEtiqueta();
@@ -407,12 +409,18 @@ final class RutinasC3D {
         c3d.emitirEtiqueta(etiquetaFinEntero);
     }
 
-    private void emitirParteDecimalNumeroAHeap(String tempValor) {
+    private void emitirParteDecimalNumeroAHeap(String tempValor, boolean esDecimal) {
         // Parte decimal: tempFraccion = tempValor - ((int)tempValor / 1)
         String tempParteEntera = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.DIVISION_ENTERA, tempParteEntera, tempValor, "1");
+        if (esDecimal) {
+            c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.DESESCALAR_ARG1_DIV_10000);
+        }
         String tempFraccion = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.RESTA, tempFraccion, tempValor, tempParteEntera);
+        if (esDecimal) {
+            c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG2_X10000);
+        }
 
         String etiquetaFinDecimal = c3d.nuevaEtiqueta();
         c3d.emitirIf(TipoOperadorC3D.IF_MENOR_IGUAL, tempFraccion, "0.00001", etiquetaFinDecimal);
@@ -433,12 +441,18 @@ final class RutinasC3D {
         c3d.emitirOperacion(TipoOperadorC3D.MULTIPLICACION, tempFraccion, tempFraccion, "10");
         String tempDigitoDecimal = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.DIVISION_ENTERA, tempDigitoDecimal, tempFraccion, "1");
+        if (esDecimal) {
+            c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.DESESCALAR_ARG1_DIV_10000);
+        }
         String tempCaracterDecimal = c3d.nuevoTemporal();
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempCaracterDecimal, tempDigitoDecimal, "48");
         c3d.emitirAsignacionHeap("H", tempCaracterDecimal);
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, "H", "H", "1");
 
         c3d.emitirOperacion(TipoOperadorC3D.RESTA, tempFraccion, tempFraccion, tempDigitoDecimal);
+        if (esDecimal) {
+            c3d.marcarAccionUltimaCuartetaRiscV(ContenedorC3D.AccionCuartetaRiscV.ESCALAR_ARG2_X10000);
+        }
         c3d.emitirOperacion(TipoOperadorC3D.SUMA, tempContadorDecimales, tempContadorDecimales, "1");
         c3d.emitirGoto(etiquetaCicloFraccion);
 
