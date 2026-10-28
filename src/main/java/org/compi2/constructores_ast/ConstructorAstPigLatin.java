@@ -108,7 +108,10 @@ public class ConstructorAstPigLatin extends piglatinBaseVisitor<NodoAST> {
         List<NodoAST> tamanios = new ArrayList<>();
         if (ctx.expresion() != null) {
             for (piglatinParser.ExpresionContext exp : ctx.expresion()) {
-                tamanios.add(visit(exp));
+                NodoAST dim = visit(exp);
+                if (dim != null) {
+                    tamanios.add(dim);
+                }
             }
         }
 

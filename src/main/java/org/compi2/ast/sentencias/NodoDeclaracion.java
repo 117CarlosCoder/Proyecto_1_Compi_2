@@ -73,6 +73,7 @@ public class NodoDeclaracion implements NodoAST {
         if (tipoFinal.getBase() == TipoBase.ARREGLO && dimensionesDeclaradas != null) {
             for (int i = 0; i < dimensionesDeclaradas.size(); i++) {
                 NodoAST dim = dimensionesDeclaradas.get(i);
+                if (dim == null) continue;
                 Tipo tDim = dim.comprobar(tablaSimbolos, errores);
                 if (tDim.getBase() != TipoBase.ENTERO && tDim.getBase() != TipoBase.ERROR) {
                     errores.add(new ErrorSemantico(

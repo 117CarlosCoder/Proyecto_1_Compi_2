@@ -36,6 +36,7 @@ public class NodoInstanciacionArreglo implements NodoAST {
 
         for (int i = 0; i < tamanosDimensiones.size(); i++) {
             NodoAST tam = tamanosDimensiones.get(i);
+            if (tam == null) continue;
             Tipo tTam = tam.comprobar(tablaSimbolos, errores);
             if (tTam.getBase() != TipoBase.ENTERO && tTam.getBase() != TipoBase.ERROR) {
                 errores.add(new ErrorSemantico(
