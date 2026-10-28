@@ -8,6 +8,8 @@ import org.compi2.UI.graficos.GeneradorDot;
 import org.compi2.UI.tablas.ModeloTablaErrores;
 import org.compi2.UI.tablas.ModeloTablaSimbolos;
 import org.compi2.analisis_semantico.TablaSimbolos;
+import org.compi2.errores.ErrorCompilacion;
+import org.compi2.errores.TipoError;
 import org.compi2.orquestador.ArchivoFuente;
 import org.compi2.orquestador.OrquestadorCompilacion;
 import org.compi2.orquestador.ResultadoCompilacion;
@@ -40,6 +42,7 @@ public class TareaCompilacion extends SwingWorker<Void, Void> {
     private int totalErrores = 0;
     private int totalSimbolos = 0;
     private ResultadoCompilacion resultadoCompilacion;
+    private Throwable errorInesperado;
 
     public TareaCompilacion(String codigoFuente, String nombreArchivo, File archivoActual, File carpetaProyecto,
                             PanelConsola panelConsola, ModeloTablaSimbolos modeloSimbolos, ModeloTablaErrores modeloErrores,
@@ -111,6 +114,7 @@ public class TareaCompilacion extends SwingWorker<Void, Void> {
             return null;
         } catch (Throwable t) {
             exito = false;
+            errorInesperado = t;
             log("Error inesperado durante la compilación: " + mensajeError(t));
             return null;
         }
@@ -199,7 +203,12 @@ public class TareaCompilacion extends SwingWorker<Void, Void> {
                 Throwable causa = (ex.getCause() != null) ? ex.getCause() : ex;
                 panelConsola.agregarTexto("\nError inesperado al compilar: " + mensajeError(causa) + "\n");
             }
-            ventanaPrincipal.notificarFinalizacion(false, 1, 0, Collections.emptyMap(), null, new TablaSimbolos(), Collections.emptyList());
+            String detalle = errorInesperado != null ? mensajeError(errorInesperado) : "Error inesperado al compilar.";
+            java.util.List<ErrorCompilacion> errFallback = Collections.singletonList(
+                new ErrorCompilacion(TipoError.SEMANTICO, "Error inesperado durante la compilación: " + detalle, nombreArchivo, 0, 0)
+            );
+            modeloErrores.actualizarErrores(errFallback);
+            ventanaPrincipal.notificarFinalizacion(false, 1, 0, Collections.emptyMap(), null, new TablaSimbolos(), errFallback);
             return;
         }
 

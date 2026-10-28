@@ -340,7 +340,11 @@ public class OrquestadorCompilacion {
                                      String contexto, String archivo, Runnable accion) {
         tabla.setContextoOrigen(contexto, archivo);
         int indiceAntes = errores.size();
-        accion.run();
+        try {
+            accion.run();
+        } catch (Exception e) {
+            errores.add(new ErrorSemantico("Error durante análisis semántico: " + e.getMessage(), contexto, 0, 0));
+        }
         etiquetarErroresConArchivo(errores, indiceAntes, archivo);
     }
 
