@@ -24,7 +24,7 @@ import java.util.function.Supplier;
 @Setter
 public class SimuladorRiscV {
 
-    public static final int LIMITE_INSTRUCCIONES_DEFAULT = 5_000_000;
+    public static final int LIMITE_INSTRUCCIONES_DEFAULT = 50_000_000;
 
     private final int[] registros = new int[32];
 
@@ -285,6 +285,7 @@ public class SimuladorRiscV {
 
             ProcessBuilder pb = new ProcessBuilder(
                     javaBin,
+                    "-Dfile.encoding=UTF-8",
                     "-jar",
                     venusJar.getAbsolutePath(),
                     "-ms",
